@@ -164,122 +164,70 @@ onMounted(() => {
 
     if (doc) {
       doc.open();
-      doc.write(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <style>
-            * { margin: 0; padding: 0; box-sizing: border-box; }
-            body {
-              font-family: system-ui, sans-serif;
-              min-height: 100vh;
-            }
-            .page-container {
-              width: 100%;
-              min-height: 100vh;
-              padding: 20px;
-              background: #f9fafb;
-            }
-            .selected {
-              outline: 2px solid #3b82f6;
-              outline-offset: 2px;
-              cursor: move;
-            }
-            .hovered { outline: 2px solid #10b981; outline-offset: 2px; }
-            .page-container.drag-over {
-              background: #dbeafe;
-              border: 2px dashed #3b82f6;
-            }
-          </style>
-        </head>
-        <body>
-          <div class="page-container">
-            <!-- Content will be injected here -->
-          </div>
-        </body>
-        </html>
-      `);
+      const htmlContent = '<!DOCTYPE html>' +
+        '<html>' +
+        '<head>' +
+        '<meta charset="UTF-8">' +
+        '<meta name="viewport" content="width=device-width, initial-scale=1.0">' +
+        '<style>' +
+        '* { margin: 0; padding: 0; box-sizing: border-box; }' +
+        'body {' +
+        'font-family: system-ui, -apple-system, sans-serif;' +
+        'min-height: 100vh;' +
+        '}' +
+        '.page-container {' +
+        'width: 100%;' +
+        'min-height: 100vh;' +
+        'padding: 20px;' +
+        'background: #f9fafb;' +
+        '}' +
+        '.selected {' +
+        'outline: 2px solid #3b82f6;' +
+        'outline-offset: 2px;' +
+        'cursor: move;' +
+        '}' +
+        '.hovered { outline: 2px solid #10b981; outline-offset: 2px; }' +
+        '.page-container.drag-over {' +
+        'background: #dbeafe;' +
+        'border: 2px dashed #3b82f6;' +
+        '}' +
+        '</style>' +
+        '</head>' +
+        '<body>' +
+        '<div class="page-container">' +
+        '<!-- Drag components here -->' +
+        '</div>' +
+        '</body>' +
+        '</html>';
+      doc.write(htmlContent);
       doc.close();
 
-      // Add event listeners for selection
-      doc.body.addEventListener('click', handleElementClick, true);
-      doc.body.addEventListener('mouseover', handleMouseOver, true);
-      doc.body.addEventListener('mouseout', handleMouseOut, true);
-      doc.body.addEventListener('dragstart', (e) => e.preventDefault());
+      // 使用 setTimeout 确保 DOM 完全加载
+      setTimeout(() => {
+        // 初始化内容
+        const container = doc.querySelector('.page-container');
+        if (container && projectStore.currentPage) {
+          container.innerHTML = projectStore.currentPage.html;
+        }
 
-      // 添加鼠标事件监听器用于拖拽元素
-      doc.addEventListener('mousedown', handleElementMouseDown, true);
-      doc.addEventListener('mousemove', handleElementMouseMove, true);
-      doc.addEventListener('mouseup', handleElementMouseUp, true);
+        // Add event listeners for selection
+        doc.body.addEventListener('click', handleElementClick, true);
+        doc.body.addEventListener('mouseover', handleMouseOver, true);
+        doc.body.addEventListener('mouseout', handleMouseOut, true);
+        doc.body.addEventListener('dragstart', (e) => e.preventDefault());
 
-      // Add drop event listeners to the page container
-      const container = doc.querySelector('.page-container');
-      if (container) {
-        // Drag over - 显示可放置提示
-        container.addEventListener('dragover', (e: any) => {
-          e.preventDefault();
-          e.stopPropagation();
-          if (e.dataTransfer) {
-            e.dataTransfer.dropEffect = 'copy';
-          }
-          container.classList.add('drag-over');
-        });
+        // 添加鼠标事件监听器用于拖拽元素
+        doc.addEventListener('mousedown', handleElementMouseDown, true);
+        doc.addEventListener('mousemove', handleElementMouseMove, true);
+        doc.addEventListener('mouseup', handleElementMouseUp, true);
 
-        // Drag leave - 移除提示
-        container.addEventListener('dragleave', (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          container.classList.remove('drag-over');
-        });
+        // Add drop event listeners to the page container
+        if (container) {
+          attachDropHandlers(container);
+        }
 
-        // Drop - 处理放置
-        container.addEventListener('drop', (e: any) => {
-          e.preventDefault();
-          e.stopPropagation();
-          container.classList.remove('drag-over');
-
-          // 尝试多种格式获取数据
-          let componentHtml = e.dataTransfer?.getData('component');
-          if (!componentHtml) {
-            componentHtml = e.dataTransfer?.getData('text/plain');
-          }
-
-          // 如果还是没有，尝试从父窗口获取（跨 iframe 拖拽）
-          if (!componentHtml && (window.parent as any)?.draggedComponentHtml) {
-            componentHtml = (window.parent as any).draggedComponentHtml;
-            // 清除全局变量
-            (window.parent as any).draggedComponentHtml = '';
-          }
-
-          console.log('Drop event fired, data:', componentHtml);
-
-          if (componentHtml) {
-            // 创建一个临时 div 来包装 HTML，确保它是有效的
-            const tempDiv = doc.createElement('div');
-            tempDiv.innerHTML = componentHtml;
-            const newElement = tempDiv.firstElementChild;
-
-            if (newElement) {
-              // 添加可选中标识
-              newElement.setAttribute('data-element-id', Date.now().toString());
-              container.appendChild(newElement);
-
-              // 更新项目 HTML
-              projectStore.updatePageHtml(container.innerHTML);
-              console.log('Component added successfully');
-
-              // 触发选中事件
-              newElement.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-            }
-          } else {
-            console.warn('No component data found');
-          }
-        });
-
-        console.log('Drop handlers attached to container');
-      }
-
-      updateCanvasContent();
+        console.log('Canvas initialized');
+      }, 100);
     }
   }
 });
@@ -297,8 +245,82 @@ function updateCanvasContent() {
   if (!canvasFrame.value?.contentDocument) return;
 
   const container = canvasFrame.value.contentDocument.querySelector('.page-container');
-  if (container && projectStore.currentPage) {
+  if (!container) return;
+
+  if (projectStore.currentPage) {
+    // 直接更新 innerHTML
     container.innerHTML = projectStore.currentPage.html;
+
+    // Re-attach drop event listeners after DOM update
+    setTimeout(() => {
+      attachDropHandlers(container);
+    }, 50);
+  }
+}
+
+function attachDropHandlers(container: Element) {
+  // Remove existing listeners to avoid duplicates
+  container.removeEventListener('dragover', handleDragOver);
+  container.removeEventListener('dragleave', handleDragLeave);
+  container.removeEventListener('drop', handleDrop);
+
+  // Add fresh listeners
+  container.addEventListener('dragover', handleDragOver);
+  container.addEventListener('dragleave', handleDragLeave);
+  container.addEventListener('drop', handleDrop);
+}
+
+function handleDragOver(e: any) {
+  e.preventDefault();
+  e.stopPropagation();
+  if (e.dataTransfer) {
+    e.dataTransfer.dropEffect = 'copy';
+  }
+  (e.currentTarget as HTMLElement).classList.add('drag-over');
+}
+
+function handleDragLeave(e: Event) {
+  e.preventDefault();
+  e.stopPropagation();
+  (e.currentTarget as HTMLElement).classList.remove('drag-over');
+}
+
+function handleDrop(e: any) {
+  e.preventDefault();
+  e.stopPropagation();
+  (e.currentTarget as HTMLElement).classList.remove('drag-over');
+
+  const doc = canvasFrame.value?.contentDocument;
+  if (!doc || !projectStore.currentPage) return;
+
+  // 尝试多种格式获取数据
+  let componentHtml = e.dataTransfer?.getData('component');
+  if (!componentHtml) {
+    componentHtml = e.dataTransfer?.getData('text/plain');
+  }
+
+  // 如果还是没有，尝试从父窗口获取（跨 iframe 拖拽）
+  if (!componentHtml && (window.parent as any)?.draggedComponentHtml) {
+    componentHtml = (window.parent as any).draggedComponentHtml;
+    // 清除全局变量
+    (window.parent as any).draggedComponentHtml = '';
+  }
+
+  if (componentHtml) {
+    // 添加可选中标识到组件 HTML
+    const componentWithId = componentHtml.replace(
+      /^<([a-z][a-z0-9]*)/i,
+      `<$1 data-element-id="${Date.now().toString()}"`
+    );
+
+    // 更新项目 HTML，追加新组件
+    const currentHtml = projectStore.currentPage.html || '';
+    const newHtml = currentHtml + componentWithId;
+    projectStore.updatePageHtml(newHtml);
+
+    console.log('Component added successfully');
+  } else {
+    console.warn('No component data found');
   }
 }
 

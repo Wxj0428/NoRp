@@ -27,7 +27,7 @@ export const useProjectStore = defineStore('project', () => {
         {
           id: generateId(),
           name: 'Page 1',
-          html: '<div class="page-container"></div>',
+          html: '<!-- Drag components here -->',
           styles: {}
         }
       ],
@@ -59,7 +59,7 @@ export const useProjectStore = defineStore('project', () => {
     const newPage: Page = {
       id: generateId(),
       name,
-      html: '<div class="page-container"></div>',
+      html: '<!-- Drag components here -->',
       styles: {}
     };
 

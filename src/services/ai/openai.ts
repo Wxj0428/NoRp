@@ -9,13 +9,24 @@ import { BaseAIService } from './base';
 import type { ChatMessage, ProjectContext, GeneratedCode, AIServiceConfig } from '@/types';
 
 export class OpenAIService extends BaseAIService {
-  name = 'OpenAI';
+  name: string;
   private client: OpenAI | null = null;
 
   constructor(config: AIServiceConfig) {
     super(config);
+    // Set name based on provider
+    this.name = config.provider === 'custom' ? 'Custom API' : 'OpenAI';
+
     if (config.apiKey) {
-      this.client = new OpenAI({ apiKey: config.apiKey });
+      // Support custom baseURL for custom API providers
+      const clientConfig: any = {
+        apiKey: config.apiKey,
+        dangerouslyAllowBrowser: true // Allow usage in Electron renderer process
+      };
+      if (config.baseURL) {
+        clientConfig.baseURL = config.baseURL;
+      }
+      this.client = new OpenAI(clientConfig);
     }
   }
 

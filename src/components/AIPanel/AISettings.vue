@@ -125,6 +125,29 @@
         <div v-else-if="localConfig.apiKey" class="p-3 bg-green-900 bg-opacity-30 border border-green-700 rounded">
           <p class="text-sm text-green-300">✓ 配置就绪</p>
         </div>
+
+        <!-- Test Connection -->
+        <div class="p-4 bg-gray-900 rounded border border-gray-700">
+          <button
+            @click="testConnection"
+            :disabled="testing || !localConfig.apiKey"
+            class="w-full px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white rounded transition flex items-center justify-center gap-2"
+          >
+            <svg v-if="!testing" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            <svg v-else class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            <span>{{ testing ? '测试中...' : '测试 AI 连接' }}</span>
+          </button>
+          <div v-if="testResult" class="mt-3 text-sm" :class="testResult.success ? 'text-green-400' : 'text-red-400'">
+            {{ testResult.message }}
+          </div>
+          <p class="text-xs text-gray-500 mt-2">
+            💡 提示：发送简单消息测试连接是否正常
+          </p>
+        </div>
       </div>
 
       <!-- Footer -->
@@ -149,6 +172,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useAIStore } from '@/stores/ai';
+import { createAIService } from '@/services/ai';
 import type { AIServiceConfig } from '@/types';
 
 const emit = defineEmits<{
@@ -198,6 +222,41 @@ function getModelDescription(): string {
     custom: '输入您的自定义 API 模型名称'
   };
   return descriptions[localConfig.value.provider] || '';
+}
+
+const testing = ref(false);
+const testResult = ref<{ success: boolean; message: string } | null>(null);
+
+async function testConnection() {
+  // 先保存配置
+  aiStore.saveConfig(localConfig.value);
+
+  testing.value = true;
+  testResult.value = null;
+
+  try {
+    const aiService = createAIService(localConfig.value);
+
+    // 发送测试消息
+    const testMessage = '你好，请回复"连接成功"';
+    let responseText = '';
+
+    for await (const chunk of aiService.chat([{ role: 'user', content: testMessage }])) {
+      responseText += chunk;
+    }
+
+    testResult.value = {
+      success: true,
+      message: `✅ ${localConfig.value.provider} 连接成功！\n\nAI 回复：${responseText.substring(0, 100)}${responseText.length > 100 ? '...' : ''}`
+    };
+  } catch (error) {
+    testResult.value = {
+      success: false,
+      message: `❌ 连接失败：${error instanceof Error ? error.message : '未知错误'}\n\n请检查：\n1. API 密钥是否正确\n2. 模型名称是否正确\n3. 网络连接是否正常\n4. 余额是否充足`
+    };
+  } finally {
+    testing.value = false;
+  }
 }
 
 function saveSettings() {

@@ -10,6 +10,16 @@
         ]">
           {{ isElectron ? 'Electron' : 'Browser' }}
         </span>
+
+        <!-- Project Info -->
+        <div class="flex items-center gap-2 px-3 py-1 bg-gray-900 rounded border border-gray-700">
+          <span class="text-gray-400 text-xs">项目:</span>
+          <span class="text-white text-sm font-medium truncate max-w-[200px]">
+            {{ projectStore.project?.name || '未命名项目' }}
+          </span>
+          <span v-if="projectStore.isDirty" class="text-yellow-400 text-xs">●</span>
+        </div>
+
         <div class="flex gap-2">
           <button
             @click="newProject"
@@ -25,7 +35,12 @@
           </button>
           <button
             @click="saveProject"
-            class="px-3 py-1 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded"
+            :class="[
+              'px-3 py-1 text-sm rounded',
+              projectStore.isDirty
+                ? 'text-yellow-300 hover:text-yellow-200 hover:bg-gray-700'
+                : 'text-gray-300 hover:text-white hover:bg-gray-700'
+            ]"
           >
             保存
           </button>
@@ -86,13 +101,58 @@
       </aside>
     </div>
 
+    <!-- Footer Status Bar -->
+    <footer class="h-8 bg-gray-800 border-t border-gray-700 flex items-center px-4 text-xs text-gray-400">
+      <div class="flex items-center gap-4">
+        <!-- Current Page -->
+        <div class="flex items-center gap-2">
+          <span>当前页面:</span>
+          <span class="text-gray-300">{{ projectStore.currentPage?.name || '无' }}</span>
+        </div>
+
+        <div class="w-px h-4 bg-gray-700"></div>
+
+        <!-- Pages Count -->
+        <div class="flex items-center gap-2">
+          <span>页面数:</span>
+          <span class="text-gray-300">{{ projectStore.pageList.length }}</span>
+        </div>
+
+        <div class="w-px h-4 bg-gray-700"></div>
+
+        <!-- Element Count -->
+        <div class="flex items-center gap-2">
+          <span>元素数:</span>
+          <span class="text-gray-300">{{ elementCount }}</span>
+        </div>
+
+        <div class="w-px h-4 bg-gray-700"></div>
+
+        <!-- Project Path (Electron only) -->
+        <div v-if="projectPath" class="flex items-center gap-2">
+          <span>项目位置:</span>
+          <span class="text-gray-300 truncate max-w-[300px]" :title="projectPath">
+            {{ projectPath }}
+          </span>
+        </div>
+      </div>
+
+      <div class="flex-1"></div>
+
+      <!-- Save Status -->
+      <div class="flex items-center gap-2">
+        <span v-if="projectStore.isDirty" class="text-yellow-400">● 未保存</span>
+        <span v-else class="text-green-400">✓ 已保存</span>
+      </div>
+    </footer>
+
     <!-- AI Panel (Floating) -->
-    <ChatPanel v-if="showAIPanel" class="fixed bottom-4 right-4 w-96 h-[600px]" />
+    <ChatPanel v-if="showAIPanel" class="fixed bottom-12 right-4 w-96 h-[600px]" />
 
     <!-- Toggle AI Panel Button -->
     <button
       @click="showAIPanel = !showAIPanel"
-      class="fixed bottom-4 right-4 w-12 h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg flex items-center justify-center text-2xl"
+      class="fixed bottom-12 right-4 w-12 h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg flex items-center justify-center text-2xl z-50"
       title="切换 AI 聊天"
     >
       🤖
@@ -126,7 +186,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import Canvas from './components/Editor/Canvas.vue';
 import PropertyPanel from './components/Editor/PropertyPanel.vue';
 import LayerTree from './components/Editor/LayerTree.vue';
@@ -152,6 +212,17 @@ const showNewProjectDialog = ref(false);
 const showProjectSettings = ref(false);
 const showAppSettings = ref(false);
 const isElectron = ref(false);
+const projectPath = ref<string | null>(null);
+
+// Computed: Element count in current page
+const elementCount = computed(() => {
+  if (!projectStore.currentPage?.html) return 0;
+  // Count self-closing tags and opening tags
+  const html = projectStore.currentPage.html;
+  const selfClosing = html.match(/<(img|br|hr|input|meta|link)[^>]*>/gi)?.length || 0;
+  const openingTags = html.match(/<([a-z][a-z0-9]*)\b[^>]*>/gi)?.length || 0;
+  return selfClosing + openingTags;
+});
 
 onMounted(() => {
   // Create a default project on startup
@@ -265,59 +336,129 @@ function handleNewProject(config: any) {
 
 async function openProject() {
   try {
+    console.log('开始打开项目...');
+
     // Check if running in Electron
     if (!(window as any).electronAPI) {
-      alert('当前在浏览器模式运行，无法打开文件。请使用 Electron 桌面应用。');
+      // 浏览器模式 - 使用文件输入
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.norp,.json';
+
+      input.onchange = async (e) => {
+        const file = (e.target as HTMLInputElement).files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          try {
+            const content = event.target?.result as string;
+            const project = JSON.parse(content);
+            projectStore.loadProject(project);
+            editorStore.clearHistory();
+            alert('✅ 项目已打开: ' + file.name);
+          } catch (error) {
+            alert('❌ 无法打开文件\n\n请确保是有效的 .norp 项目文件');
+          }
+        };
+        reader.readAsText(file);
+      };
+
+      input.click();
       return;
     }
 
     const result = await storageService.showOpenDialog();
-    if (!result.canceled && result.filePaths.length > 0) {
-      const project = await storageService.loadProject(result.filePaths[0]);
-      if (project) {
-        projectStore.loadProject(project);
-        editorStore.clearHistory();
-        alert('项目已打开');
-      }
+    console.log('打开对话框结果:', result);
+
+    if (result.canceled) {
+      console.log('用户取消打开');
+      return;
+    }
+
+    if (!result.filePaths || result.filePaths.length === 0) {
+      alert('❌ 未选择文件');
+      return;
+    }
+
+    const filePath = result.filePaths[0];
+    console.log('打开文件:', filePath);
+
+    const project = await storageService.loadProject(filePath);
+    if (project) {
+      projectStore.loadProject(project);
+      projectPath.value = filePath;
+      editorStore.clearHistory();
+      alert('✅ 项目已打开: ' + project.name);
+    } else {
+      alert('❌ 无法打开项目\n\n文件可能已损坏或格式不正确');
     }
   } catch (error) {
-    console.error('Failed to open project:', error);
-    alert('打开项目失败: ' + (error instanceof Error ? error.message : '未知错误'));
+    console.error('打开项目异常:', error);
+    alert('❌ 打开项目失败:\n' + (error instanceof Error ? error.message : String(error)));
   }
 }
 
 async function saveProject() {
   try {
+    console.log('开始保存项目...');
+    console.log('项目数据:', projectStore.project);
+    console.log('electronAPI 可用:', !!(window as any).electronAPI);
+
     if (!projectStore.project) {
-      alert('没有可保存的项目');
+      alert('❌ 没有可保存的项目');
       return;
     }
 
     // Check if running in Electron
     if (!(window as any).electronAPI) {
-      alert('当前在浏览器模式运行，无法保存文件。请使用 Electron 桌面应用。');
-      console.log('模拟保存：', JSON.stringify(projectStore.project, null, 2));
+      // 浏览器模式 - 导出 JSON 文件
+      const content = JSON.stringify(projectStore.project, null, 2);
+      const blob = new Blob([content], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${projectStore.project.name}.norp`;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      alert('✅ 项目已导出（浏览器模式：文件已下载）\n\n💡 提示：在 Electron 应用中可以保存到任意位置');
       return;
     }
 
-    // If project already has a path, save directly
-    // Otherwise show save dialog
+    // Electron 模式 - 使用文件对话框
+    console.log('显示保存对话框...');
     const result = await storageService.showSaveDialog({
-      defaultPath: `${projectStore.project.name}.norp`
+      defaultPath: `${projectStore.project.name}.norp`,
+      title: '保存项目'
     });
 
-    if (!result.canceled && result.filePath) {
-      const success = await storageService.saveProject(result.filePath, projectStore.project);
-      if (success) {
-        projectStore.markAsSaved();
-        alert('项目已保存到: ' + result.filePath);
-      } else {
-        alert('保存失败');
-      }
+    console.log('对话框结果:', result);
+
+    if (result.canceled) {
+      console.log('用户取消保存');
+      return;
+    }
+
+    if (!result.filePath) {
+      alert('❌ 未选择保存位置');
+      return;
+    }
+
+    console.log('保存到:', result.filePath);
+    const success = await storageService.saveProject(result.filePath, projectStore.project);
+
+    if (success) {
+      projectStore.markAsSaved();
+      projectPath.value = result.filePath;
+      alert('✅ 项目已保存到:\n' + result.filePath);
+      console.log('保存成功');
+    } else {
+      alert('❌ 保存失败\n\n请检查:\n1. 是否有写入权限\n2. 磁盘空间是否充足\n3. 文件是否被其他程序占用');
     }
   } catch (error) {
-    console.error('Failed to save project:', error);
-    alert('保存项目失败: ' + (error instanceof Error ? error.message : '未知错误'));
+    console.error('保存项目异常:', error);
+    alert('❌ 保存项目失败:\n' + (error instanceof Error ? error.message : String(error)));
   }
 }
 

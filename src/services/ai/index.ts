@@ -22,8 +22,9 @@ export function createAIService(config: AIServiceConfig): AIService {
     case 'local':
       return new LocalAIService(config);
     case 'custom':
-      // For custom API, we use the local service with custom base URL
-      return new LocalAIService(config);
+      // For custom API, use OpenAI service with custom base URL
+      // Most custom APIs (like Zhipu AI, DeepSeek, etc.) use OpenAI-compatible format
+      return new OpenAIService(config);
     default:
       throw new Error(`Unknown AI provider: ${config.provider}`);
   }

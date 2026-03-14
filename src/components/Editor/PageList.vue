@@ -28,6 +28,7 @@
             : 'hover:bg-gray-700 text-gray-300'
         ]"
         @click="selectPage(page.id)"
+        @dblclick="startRename(page)"
         @contextmenu.prevent="showContextMenu($event, page, index)"
       >
         <!-- Page Icon -->
@@ -174,14 +175,19 @@ function selectPage(pageId: string) {
   }
 }
 
-// Start renaming
-function renamePage(page: any) {
+// Start renaming (double click)
+function startRename(page: Page) {
   editingPageId.value = page.id;
   editingName.value = page.name;
   nextTick(() => {
     editInput.value?.focus();
     editInput.value?.select();
   });
+}
+
+// Start renaming (from context menu)
+function renamePage(page: any) {
+  startRename(page);
 }
 
 // Finish renaming

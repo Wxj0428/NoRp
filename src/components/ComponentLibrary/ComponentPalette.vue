@@ -29,271 +29,604 @@ import { ref, computed } from 'vue';
 import type { Component } from '@/types';
 
 const components = ref<Component[]>([
-  // Basic components
+  // 按钮
   {
-    id: 'btn-basic',
-    name: 'Button',
-    category: 'basic',
-    icon: '⚙',
-    template: '<button class="btn">Click me</button>',
-    defaultStyles: {
-      padding: '10px 20px',
-      backgroundColor: '#3b82f6',
-      color: '#ffffff',
-      border: 'none',
-      borderRadius: '4px',
-      cursor: 'pointer'
-    }
+    id: 'btn-primary',
+    name: '主要按钮',
+    category: '按钮',
+    icon: '🔵',
+    template: `<button class="btn btn-primary">点击我</button>
+<style>
+.btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-block;
+}
+.btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  box-shadow: 0 4px 6px rgba(102, 126, 234, 0.3);
+}
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(102, 126, 234, 0.4);
+}
+</style>`
   },
   {
-    id: 'input-basic',
-    name: 'Input',
-    category: 'basic',
-    icon: '⌨',
-    template: '<input type="text" class="input" placeholder="Enter text..." />',
-    defaultStyles: {
-      padding: '10px',
-      border: '1px solid #d1d5db',
-      borderRadius: '4px',
-      fontSize: '14px'
-    }
+    id: 'btn-success',
+    name: '成功按钮',
+    category: '按钮',
+    icon: '🟢',
+    template: `<button class="btn btn-success">成功</button>
+<style>
+.btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-block;
+}
+.btn-success {
+  background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+  color: white;
+  box-shadow: 0 4px 6px rgba(17, 153, 142, 0.3);
+}
+.btn-success:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(17, 153, 142, 0.4);
+}
+</style>`
   },
   {
-    id: 'text-basic',
-    name: 'Text',
-    category: 'basic',
-    icon: '¶',
-    template: '<p class="text">Lorem ipsum dolor sit amet</p>',
-    defaultStyles: {
-      fontSize: '16px',
-      lineHeight: '1.5',
-      color: '#374151'
-    }
+    id: 'btn-danger',
+    name: '危险按钮',
+    category: '按钮',
+    icon: '🔴',
+    template: `<button class="btn btn-danger">删除</button>
+<style>
+.btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-block;
+}
+.btn-danger {
+  background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+  color: white;
+  box-shadow: 0 4px 6px rgba(235, 51, 73, 0.3);
+}
+.btn-danger:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(235, 51, 73, 0.4);
+}
+</style>`
   },
   {
-    id: 'heading-basic',
-    name: 'Heading',
-    category: 'basic',
-    icon: 'H₁',
-    template: '<h1 class="heading">Heading Text</h1>',
-    defaultStyles: {
-      fontSize: '32px',
-      fontWeight: 'bold',
-      color: '#111827'
-    }
-  },
-  {
-    id: 'image-basic',
-    name: 'Image',
-    category: 'basic',
-    icon: '🖼',
-    template: '<img class="image" src="https://via.placeholder.com/300x200" alt="Placeholder" />',
-    defaultStyles: {
-      maxWidth: '100%',
-      height: 'auto',
-      borderRadius: '4px'
-    }
-  },
-  {
-    id: 'link-basic',
-    name: 'Link',
-    category: 'basic',
-    icon: '🔗',
-    template: '<a href="#" class="link">Click here</a>',
-    defaultStyles: {
-      color: '#3b82f6',
-      textDecoration: 'underline'
-    }
-  },
-
-  // Layout components
-  {
-    id: 'container',
-    name: 'Container',
-    category: 'layout',
-    icon: '▢',
-    template: '<div class="container"></div>',
-    defaultStyles: {
-      width: '100%',
-      maxWidth: '1200px',
-      margin: '0 auto',
-      padding: '20px'
-    }
-  },
-  {
-    id: 'grid',
-    name: 'Grid',
-    category: 'layout',
-    icon: '⊞',
-    template:
-      '<div class="grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px;"><div>Cell 1</div><div>Cell 2</div></div>',
-    defaultStyles: {
-      display: 'grid',
-      gap: '20px'
-    }
-  },
-  {
-    id: 'flex',
-    name: 'Flex Box',
-    category: 'layout',
-    icon: '⊟',
-    template:
-      '<div class="flex" style="display: flex; gap: 20px;"><div>Item 1</div><div>Item 2</div></div>',
-    defaultStyles: {
-      display: 'flex',
-      gap: '20px'
-    }
-  },
-  {
-    id: 'card',
-    name: 'Card',
-    category: 'layout',
-    icon: '▭',
-    template:
-      '<div class="card"><div class="card-content">Card content</div></div>',
-    defaultStyles: {
-      backgroundColor: '#ffffff',
-      border: '1px solid #e5e7eb',
-      borderRadius: '8px',
-      padding: '20px',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-    }
+    id: 'btn-outline',
+    name: '边框按钮',
+    category: '按钮',
+    icon: '⚪',
+    template: `<button class="btn btn-outline">边框按钮</button>
+<style>
+.btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-block;
+}
+.btn-outline {
+  background: white;
+  color: #667eea;
+  border: 2px solid #667eea;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+.btn-outline:hover {
+  background: #667eea;
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+}
+</style>`
   },
 
-  // Form components
+  // 表单
   {
-    id: 'form',
-    name: 'Form',
-    category: 'forms',
-    icon: '📋',
-    template:
-      '<form class="form"><div style="margin-bottom: 10px;"><label>Label</label><input type="text" style="width: 100%; padding: 8px; margin-top: 4px; border: 1px solid #ddd; border-radius: 4px;" /></div><button type="submit" style="padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer;">Submit</button></form>',
-    defaultStyles: {}
+    id: 'input-text',
+    name: '输入框',
+    category: '表单',
+    icon: '📝',
+    template: `<input type="text" class="input" placeholder="请输入内容..." />
+<style>
+.input {
+  width: 100%;
+  max-width: 300px;
+  padding: 12px 16px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: all 0.2s;
+  box-sizing: border-box;
+  background: white;
+}
+.input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+.input::placeholder {
+  color: #a0aec0;
+}
+</style>`
+  },
+  {
+    id: 'input-search',
+    name: '搜索框',
+    category: '表单',
+    icon: '🔍',
+    template: `<div class="search-wrapper">
+  <input type="text" class="search-input" placeholder="搜索..." />
+  <svg class="search-icon" width="20" height="20" fill="none" stroke="currentColor">
+    <circle cx="9" cy="9" r="7"/>
+    <path d="M21 21l-6-6"/>
+  </svg>
+</div>
+<style>
+.search-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 300px;
+}
+.search-input {
+  width: 100%;
+  padding: 12px 16px 12px 45px;
+  border: 2px solid #e2e8f0;
+  border-radius: 25px;
+  font-size: 14px;
+  box-sizing: border-box;
+  background: white;
+}
+.search-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+.search-icon {
+  position: absolute;
+  left: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #a0aec0;
+  pointer-events: none;
+}
+</style>`
   },
   {
     id: 'textarea',
-    name: 'Textarea',
-    category: 'forms',
-    icon: '📝',
-    template: '<textarea class="textarea" rows="4" placeholder="Enter text..."></textarea>',
-    defaultStyles: {
-      width: '100%',
-      padding: '10px',
-      border: '1px solid #d1d5db',
-      borderRadius: '4px',
-      fontSize: '14px',
-      resize: 'vertical'
-    }
+    name: '文本域',
+    category: '表单',
+    icon: '📄',
+    template: `<textarea class="textarea" rows="3" placeholder="请输入内容..."></textarea>
+<style>
+.textarea {
+  width: 100%;
+  max-width: 300px;
+  padding: 12px 16px;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+  transition: all 0.2s;
+  box-sizing: border-box;
+  background: white;
+}
+.textarea:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+</style>`
   },
   {
     id: 'checkbox',
-    name: 'Checkbox',
-    category: 'forms',
-    icon: '☑',
-    template: '<label class="checkbox"><input type="checkbox" /> Check me</label>',
-    defaultStyles: {
-      cursor: 'pointer'
-    }
-  },
-  {
-    id: 'select',
-    name: 'Select',
-    category: 'forms',
-    icon: '▼',
-    template: '<select class="select"><option>Option 1</option><option>Option 2</option></select>',
-    defaultStyles: {
-      padding: '10px',
-      border: '1px solid #d1d5db',
-      borderRadius: '4px',
-      fontSize: '14px'
-    }
+    name: '复选框',
+    category: '表单',
+    icon: '☑️',
+    template: `<label class="checkbox-label">
+  <input type="checkbox" class="checkbox" />
+  <span>同意条款</span>
+</label>
+<style>
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-size: 14px;
+  color: #2d3748;
+}
+.checkbox {
+  width: 20px;
+  height: 20px;
+  margin-right: 8px;
+  accent-color: #667eea;
+  cursor: pointer;
+}
+</style>`
   },
 
-  // Navigation
+  // 卡片
+  {
+    id: 'card-basic',
+    name: '基础卡片',
+    category: '卡片',
+    icon: '🃏',
+    template: `<div class="card">
+  <h3 class="card-title">卡片标题</h3>
+  <p class="card-content">这是一段卡片内容，可以包含文字、图片或其他元素。</p>
+</div>
+<style>
+.card {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07), 0 2px 4px rgba(0, 0, 0, 0.06);
+  max-width: 300px;
+}
+.card-title {
+  margin: 0 0 12px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1a202c;
+}
+.card-content {
+  margin: 0;
+  font-size: 14px;
+  color: #718096;
+  line-height: 1.6;
+}
+</style>`
+  },
+  {
+    id: 'card-image',
+    name: '图片卡片',
+    category: '卡片',
+    icon: '🖼️',
+    template: `<div class="image-card">
+  <div class="image-card-header">
+    <div class="image-placeholder">🖼️</div>
+  </div>
+  <div class="image-card-body">
+    <h3 class="image-card-title">图片卡片</h3>
+    <p class="image-card-text">这是一个带图片的卡片示例</p>
+  </div>
+</div>
+<style>
+.image-card {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07), 0 2px 4px rgba(0, 0, 0, 0.06);
+  max-width: 300px;
+}
+.image-card-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.image-placeholder {
+  font-size: 48px;
+}
+.image-card-body {
+  padding: 20px;
+}
+.image-card-title {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #1a202c;
+}
+.image-card-text {
+  margin: 0;
+  font-size: 14px;
+  color: #718096;
+}
+</style>`
+  },
+
+  // 标签徽章
+  {
+    id: 'badge',
+    name: '徽章',
+    category: '标签',
+    icon: '🏷️',
+    template: `<span class="badge">新功能</span>
+<style>
+.badge {
+  display: inline-block;
+  padding: 4px 12px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+}
+</style>`
+  },
+  {
+    id: 'tag',
+    name: '标签',
+    category: '标签',
+    icon: '🏷️',
+    template: `<div class="tags">
+  <span class="tag tag-blue">蓝色</span>
+  <span class="tag tag-green">绿色</span>
+  <span class="tag tag-orange">橙色</span>
+</div>
+<style>
+.tags {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.tag {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+}
+.tag-blue {
+  background: #ebf8ff;
+  color: #3182ce;
+}
+.tag-green {
+  background: #f0fff4;
+  color: #38a169;
+}
+.tag-orange {
+  background: #fffaf0;
+  color: #dd6b20;
+}
+</style>`
+  },
+
+  // 提示
+  {
+    id: 'alert-success',
+    name: '成功提示',
+    category: '提示',
+    icon: '✅',
+    template: `<div class="alert alert-success">
+  <span class="alert-icon">✓</span>
+  <span class="alert-message">操作成功完成！</span>
+</div>
+<style>
+.alert {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  border-radius: 8px;
+  max-width: 300px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+.alert-success {
+  background: #f0fff4;
+  border: 1px solid #c6f6d5;
+  color: #276749;
+}
+.alert-icon {
+  font-size: 18px;
+  margin-right: 12px;
+  font-weight: bold;
+}
+.alert-message {
+  font-size: 14px;
+}
+</style>`
+  },
+  {
+    id: 'alert-warning',
+    name: '警告提示',
+    category: '提示',
+    icon: '⚠️',
+    template: `<div class="alert alert-warning">
+  <span class="alert-icon">⚠</span>
+  <span class="alert-message">请注意这条警告信息</span>
+</div>
+<style>
+.alert {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  border-radius: 8px;
+  max-width: 300px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+.alert-warning {
+  background: #fffaf0;
+  border: 1px solid #feebc8;
+  color: #975a16;
+}
+.alert-icon {
+  font-size: 18px;
+  margin-right: 12px;
+  font-weight: bold;
+}
+.alert-message {
+  font-size: 14px;
+}
+</style>`
+  },
+
+  // 导航
   {
     id: 'navbar',
-    name: 'Navbar',
-    category: 'navigation',
-    icon: '☰',
-    template:
-      '<nav class="navbar" style="display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background: #f9fafb; border-bottom: 1px solid #e5e7eb;"><div style="font-weight: bold; font-size: 18px;">Logo</div><div style="display: flex; gap: 20px;"><a href="#" style="color: #374151; text-decoration: none;">Home</a><a href="#" style="color: #374151; text-decoration: none;">About</a><a href="#" style="color: #374151; text-decoration: none;">Contact</a></div></nav>',
-    defaultStyles: {}
+    name: '导航栏',
+    category: '导航',
+    icon: '📍',
+    template: `<nav class="navbar">
+  <a href="#" class="nav-link active">首页</a>
+  <a href="#" class="nav-link">产品</a>
+  <a href="#" class="nav-link">关于</a>
+  <a href="#" class="nav-link">联系</a>
+</nav>
+<style>
+.navbar {
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+.nav-link {
+  padding: 8px 16px;
+  text-decoration: none;
+  color: #718096;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+.nav-link:hover {
+  background: #edf2f7;
+  color: #2d3748;
+}
+.nav-link.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+</style>`
   },
   {
     id: 'breadcrumb',
-    name: 'Breadcrumb',
-    category: 'navigation',
-    icon: '›',
-    template:
-      '<nav class="breadcrumb" style="display: flex; gap: 8px; font-size: 14px;"><a href="#" style="color: #3b82f6; text-decoration: none;">Home</a><span style="color: #9ca3af;">/</span><a href="#" style="color: #3b82f6; text-decoration: none;">Category</a><span style="color: #9ca3af;">/</span><span style="color: #6b7280;">Page</span></nav>',
-    defaultStyles: {}
-  },
-  {
-    id: 'tabs',
-    name: 'Tabs',
-    category: 'navigation',
-    icon: '⚌',
-    template:
-      '<div class="tabs" style="border-bottom: 1px solid #e5e7eb;"><button style="padding: 10px 20px; background: none; border: none; border-bottom: 2px solid #3b82f6; cursor: pointer; color: #3b82f6; font-weight: 500;">Tab 1</button><button style="padding: 10px 20px; background: none; border: none; cursor: pointer; color: #6b7280;">Tab 2</button><button style="padding: 10px 20px; background: none; border: none; cursor: pointer; color: #6b7280;">Tab 3</button></div>',
-    defaultStyles: {}
-  },
-
-  // Data Display
-  {
-    id: 'table',
-    name: 'Table',
-    category: 'data',
-    icon: '⊟',
-    template:
-      '<table class="table" style="width: 100%; border-collapse: collapse;"><thead><tr style="background: #f9fafb;"><th style="padding: 12px; text-align: left; border-bottom: 1px solid #e5e7eb;">Header 1</th><th style="padding: 12px; text-align: left; border-bottom: 1px solid #e5e7eb;">Header 2</th></tr></thead><tbody><tr><td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">Data 1</td><td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">Data 2</td></tr><tr><td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">Data 3</td><td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">Data 4</td></tr></tbody></table>',
-    defaultStyles: {}
-  },
-  {
-    id: 'list',
-    name: 'List',
-    category: 'data',
-    icon: '⋮',
-    template:
-      '<ul class="list" style="list-style: disc; padding-left: 20px;"><li>Item 1</li><li>Item 2</li><li>Item 3</li></ul>',
-    defaultStyles: {}
-  },
-  {
-    id: 'badge',
-    name: 'Badge',
-    category: 'data',
-    icon: '●',
-    template:
-      '<span class="badge" style="display: inline-block; padding: 4px 12px; background: #dbeafe; color: #1e40af; border-radius: 9999px; font-size: 12px; font-weight: 500;">Badge</span>',
-    defaultStyles: {}
+    name: '面包屑',
+    category: '导航',
+    icon: '🧭',
+    template: `<nav class="breadcrumb">
+  <a href="#" class="breadcrumb-link">首页</a>
+  <span class="breadcrumb-separator">/</span>
+  <a href="#" class="breadcrumb-link">产品</a>
+  <span class="breadcrumb-separator">/</span>
+  <span class="breadcrumb-current">详情</span>
+</nav>
+<style>
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+}
+.breadcrumb-link {
+  color: #667eea;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.breadcrumb-link:hover {
+  color: #764ba2;
+}
+.breadcrumb-separator {
+  margin: 0 8px;
+  color: #a0aec0;
+}
+.breadcrumb-current {
+  color: #718096;
+  font-weight: 500;
+}
+</style>`
   },
 
-  // Feedback
+  // 布局
   {
-    id: 'alert',
-    name: 'Alert',
-    category: 'feedback',
-    icon: '⚠',
-    template:
-      '<div class="alert" style="padding: 12px 16px; background: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 4px; color: #92400e;">This is an alert message</div>',
-    defaultStyles: {}
+    id: 'grid-2',
+    name: '两列布局',
+    category: '布局',
+    icon: '▦',
+    template: `<div class="grid-2">
+  <div class="grid-item">列 1</div>
+  <div class="grid-item">列 2</div>
+</div>
+<style>
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  width: 100%;
+  max-width: 400px;
+}
+.grid-item {
+  background: white;
+  padding: 24px;
+  border-radius: 8px;
+  text-align: center;
+  color: #718096;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+</style>`
   },
   {
-    id: 'modal',
-    name: 'Modal',
-    category: 'feedback',
-    icon: '◉',
-    template:
-      '<div class="modal" style="position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center;"><div style="background: white; padding: 24px; border-radius: 8px; max-width: 400px; width: 100%;"><h3 style="margin: 0 0 16px 0; font-size: 18px; font-weight: bold;">Modal Title</h3><p style="margin: 0 0 20px 0; color: #6b7280;">Modal content goes here</p><button style="padding: 10px 20px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer;">Close</button></div></div>',
-    defaultStyles: {}
+    id: 'grid-3',
+    name: '三列布局',
+    category: '布局',
+    icon: '▦',
+    template: `<div class="grid-3">
+  <div class="grid-item">列 1</div>
+  <div class="grid-item">列 2</div>
+  <div class="grid-item">列 3</div>
+</div>
+<style>
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  width: 100%;
+  max-width: 400px;
+}
+.grid-item {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  text-align: center;
+  color: #718096;
+  font-size: 13px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+</style>`
   },
   {
-    id: 'tooltip',
-    name: 'Tooltip',
-    category: 'feedback',
-    icon: 'ⓘ',
-    template:
-      '<div class="tooltip" style="position: relative; display: inline-block;"><span style="cursor: help; border-bottom: 1px dotted #6b7280;">Hover me</span><div style="position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: #1f2937; color: white; padding: 6px 12px; border-radius: 4px; font-size: 12px; white-space: nowrap; margin-bottom: 4px;">Tooltip text</div></div>',
-    defaultStyles: {}
+    id: 'divider',
+    name: '分割线',
+    category: '布局',
+    icon: '➖',
+    template: `<hr class="divider" />
+<style>
+.divider {
+  border: none;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #e2e8f0, transparent);
+  margin: 16px 0;
+  width: 100%;
+}
+</style>`
   }
 ]);
 
@@ -316,7 +649,7 @@ function handleDragStart(event: DragEvent, component: Component) {
     event.dataTransfer.effectAllowed = 'copy';
     // 存储到全局变量，供 iframe 内部访问
     (window as any).draggedComponentHtml = component.template;
-    console.log('Dragging component:', component.name, component.template);
+    console.log('Dragging component:', component.name);
   }
 }
 </script>

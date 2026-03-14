@@ -16,36 +16,38 @@
     "electron:build:linux": "npm run build && electron-builder --linux"
   },
   "dependencies": {
-    "vue": "^3.5.13",
-    "pinia": "^2.3.0",
-    "@vueuse/core": "^12.7.0",
     "@anthropic-ai/sdk": "^0.33.1",
-    "openai": "^4.91.1",
-    "monaco-editor": "^0.52.0",
+    "@element-plus/icons-vue": "^2.3.2",
+    "@vueuse/core": "^12.7.0",
+    "element-plus": "^2.13.5",
+    "file-saver": "^2.0.5",
     "html2canvas": "^1.4.1",
-    "file-saver": "^2.0.5"
+    "monaco-editor": "^0.52.0",
+    "openai": "^4.91.1",
+    "pinia": "^2.3.0",
+    "vue": "^3.5.13"
   },
   "devDependencies": {
+    "@types/file-saver": "^2.0.7",
+    "@types/node": "^22.13.10",
+    "@typescript-eslint/eslint-plugin": "^8.26.1",
+    "@typescript-eslint/parser": "^8.26.1",
     "@vitejs/plugin-vue": "^5.2.1",
-    "typescript": "~5.8.3",
-    "vite": "^6.3.5",
-    "vue-tsc": "^2.2.8",
+    "autoprefixer": "^10.4.20",
+    "concurrently": "^9.1.2",
     "electron": "^35.0.0",
     "electron-builder": "^25.1.8",
-    "vite-plugin-electron": "^0.29.0",
-    "vite-plugin-electron-renderer": "^0.14.5",
-    "concurrently": "^9.1.2",
-    "wait-on": "^8.0.3",
-    "@types/node": "^22.13.10",
-    "@types/file-saver": "^2.0.7",
     "eslint": "^9.23.0",
     "eslint-plugin-vue": "^9.33.0",
-    "@typescript-eslint/parser": "^8.26.1",
-    "@typescript-eslint/eslint-plugin": "^8.26.1",
-    "prettier": "^3.5.3",
-    "autoprefixer": "^10.4.20",
     "postcss": "^8.5.3",
-    "tailwindcss": "^3.4.17"
+    "prettier": "^3.5.3",
+    "tailwindcss": "^3.4.17",
+    "typescript": "~5.8.3",
+    "vite": "^6.3.5",
+    "vite-plugin-electron": "^0.29.0",
+    "vite-plugin-electron-renderer": "^0.14.5",
+    "vue-tsc": "^2.2.8",
+    "wait-on": "^8.0.3"
   },
   "build": {
     "appId": "com.norp.ui-designer",
@@ -60,16 +62,23 @@
       "node_modules/**/*"
     ],
     "win": {
-      "target": ["nsis"],
+      "target": [
+        "nsis"
+      ],
       "icon": "build/icon.ico"
     },
     "mac": {
-      "target": ["dmg"],
+      "target": [
+        "dmg"
+      ],
       "icon": "build/icon.icns",
       "category": "public.app-category.developer-tools"
     },
     "linux": {
-      "target": ["AppImage", "deb"],
+      "target": [
+        "AppImage",
+        "deb"
+      ],
       "icon": "build/icon.png",
       "category": "Development"
     }
