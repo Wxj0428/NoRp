@@ -1,0 +1,141 @@
+// ============= AI Service Types =============
+
+export interface ChatMessage {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+}
+
+export interface ProjectContext {
+  projectName: string;
+  currentSelection?: string;
+  projectStructure?: any;
+  conversationHistory: ChatMessage[];
+}
+
+export interface GeneratedCode {
+  html: string;
+  css?: string;
+  javascript?: string;
+  description?: string;
+}
+
+export interface AIServiceConfig {
+  provider: 'claude' | 'openai' | 'local' | 'custom';
+  apiKey?: string;
+  baseURL?: string;
+  model?: string;
+  temperature?: number;
+  maxTokens?: number;
+}
+
+export interface AIService {
+  name: string;
+  generateCode(prompt: string, context: ProjectContext): Promise<GeneratedCode>;
+  chat(messages: ChatMessage[]): AsyncGenerator<string>;
+  isConfigured(): boolean;
+}
+
+// ============= Project Types =============
+
+export interface Project {
+  id: string;
+  name: string;
+  createdAt: Date;
+  modifiedAt: Date;
+  pages: Page[];
+  assets: Asset[];
+  settings: ProjectSettings;
+}
+
+export interface Page {
+  id: string;
+  name: string;
+  html: string;
+  styles: Record<string, CSSStyleDeclaration>;
+  scripts?: string;
+}
+
+export interface Asset {
+  id: string;
+  name: string;
+  type: 'image' | 'font' | 'icon' | 'other';
+  path: string;
+  url?: string;
+}
+
+export interface ProjectSettings {
+  theme: 'light' | 'dark';
+  autosave: boolean;
+  autosaveInterval: number;
+  gridEnabled: boolean;
+  gridSize: number;
+  snapToGrid: boolean;
+}
+
+// ============= Component Types =============
+
+export interface ComponentProp {
+  name: string;
+  type: 'string' | 'number' | 'boolean' | 'color' | 'select' | 'image';
+  label: string;
+  defaultValue?: any;
+  options?: string[]; // For select type
+}
+
+export interface Component {
+  id: string;
+  name: string;
+  category:
+    | 'basic'
+    | 'layout'
+    | 'navigation'
+    | 'data'
+    | 'feedback'
+    | 'forms'
+    | 'media';
+  icon: string;
+  template: string;
+  defaultStyles: Partial<CSSStyleDeclaration>;
+  props?: ComponentProp[];
+  editableAreas?: string[];
+}
+
+// ============= Editor Types =============
+
+export interface ElementData {
+  id: string;
+  tagName: string;
+  attributes: Record<string, string>;
+  styles: CSSStyleDeclaration;
+  children?: ElementData[];
+  content?: string;
+}
+
+export interface SelectionState {
+  element: HTMLElement | null;
+  elementData: ElementData | null;
+}
+
+export interface HistoryAction {
+  type: 'add' | 'delete' | 'move' | 'resize' | 'style';
+  elementId: string;
+  before: any;
+  after: any;
+  timestamp: Date;
+}
+
+// ============= Export Types =============
+
+export interface ExportOptions {
+  format: 'html-single' | 'html-split' | 'vue' | 'react';
+  minify: boolean;
+  includeDependencies: boolean;
+  responsive: boolean;
+}
+
+export interface ExportResult {
+  html: string;
+  css?: string;
+  javascript?: string;
+  files?: { name: string; content: string }[];
+}
