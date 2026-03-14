@@ -41,5 +41,9 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true
+  },
+  // 清除缓存
+  optimizeDeps: {
+    exclude: ['electron']
   }
 });

@@ -1,16 +1,30 @@
 <template>
   <div class="chat-panel h-full bg-gray-800 rounded-lg shadow-xl flex flex-col overflow-hidden">
     <!-- Header -->
-    <div class="p-4 border-b border-gray-700 flex items-center justify-between">
-      <h3 class="text-white font-semibold">AI 助手</h3>
-      <button
-        @click="$emit('close')"
-        class="p-1 hover:bg-gray-700 rounded"
-      >
-        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-        </svg>
-      </button>
+    <div class="p-4 border-b border-gray-700">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-white font-semibold">AI 助手</h3>
+        <button
+          @click="$emit('close')"
+          class="p-1 hover:bg-gray-700 rounded"
+        >
+          <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Example Prompts -->
+      <div class="flex flex-wrap gap-2">
+        <button
+          v-for="example in examplePrompts"
+          :key="example"
+          @click="useExamplePrompt(example)"
+          class="px-2 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 text-xs rounded transition"
+        >
+          {{ example }}
+        </button>
+      </div>
     </div>
 
     <!-- Messages -->
@@ -105,9 +119,22 @@ const isLoading = ref(false);
 const lastGeneratedCode = ref('');
 const streamingResponse = ref('');
 
+const examplePrompts = [
+  '创建登录表单',
+  '添加导航栏',
+  '生成卡片组件',
+  '创建数据表格',
+  '添加产品卡片',
+  '生成页面布局'
+];
+
 onMounted(() => {
   aiStore.loadConfig();
 });
+
+function useExamplePrompt(prompt: string) {
+  inputMessage.value = prompt;
+}
 
 async function sendMessage() {
   const message = inputMessage.value.trim();

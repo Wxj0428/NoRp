@@ -33,6 +33,24 @@
         </svg>
       </button>
       <div class="w-px h-6 bg-gray-600"></div>
+
+      <!-- Device Presets -->
+      <div class="flex items-center gap-1 px-2 border-l border-r border-gray-600">
+        <button
+          v-for="device in devices"
+          :key="device.id"
+          @click="setDevice(device)"
+          :class="[
+            'p-2 hover:bg-gray-700 rounded transition',
+            currentDevice === device.id ? 'bg-blue-600' : ''
+          ]"
+          :title="device.name"
+        >
+          <span class="text-sm">{{ device.icon }}</span>
+        </button>
+      </div>
+
+      <div class="w-px h-6 bg-gray-600"></div>
       <button
         @click="handleZoomOut"
         class="p-2 hover:bg-gray-700 rounded"
@@ -123,6 +141,14 @@ const zoom = computed(() => editorStore.zoom);
 const canUndo = computed(() => editorStore.canUndo);
 const canRedo = computed(() => editorStore.canRedo);
 const selectedElement = computed(() => editorStore.selectedElement);
+const currentDevice = ref('desktop');
+
+const devices = [
+  { id: 'desktop', name: '桌面 (1920x1080)', icon: '🖥️', width: 1200, height: 800 },
+  { id: 'laptop', name: '笔记本 (1366x768)', icon: '💻', width: 1100, height: 700 },
+  { id: 'tablet', name: '平板 (768x1024)', icon: '📱', width: 768, height: 1024 },
+  { id: 'mobile', name: '手机 (375x667)', icon: '📱', width: 375, height: 667 }
+];
 
 // 拖拽状态
 const isDragging = ref(false);
@@ -458,6 +484,15 @@ function handleUndo() {
 
 function handleRedo() {
   editorStore.redo();
+}
+
+function setDevice(device: any) {
+  currentDevice.value = device.id;
+  canvasWidth.value = device.width;
+  canvasHeight.value = device.height;
+
+  // Reset zoom when changing device
+  editorStore.setZoom(1);
 }
 </script>
 

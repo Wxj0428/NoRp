@@ -24,7 +24,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'menu:save',
       'menu:save-as',
       'menu:export',
-      'menu:ai-settings'
+      'menu:project-settings',
+      'menu:app-settings',
+      'menu:ai-settings',
+      'menu:select-all',
+      'menu:zoom-in',
+      'menu:zoom-out',
+      'menu:reset-zoom',
+      'menu:shortcuts',
+      'menu:about'
     ];
 
     events.forEach((event) => {

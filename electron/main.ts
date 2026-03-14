@@ -64,6 +64,7 @@ function createMenu() {
             }
           }
         },
+        { type: 'separator' },
         {
           label: '保存',
           accelerator: 'CmdOrCtrl+S',
@@ -81,6 +82,13 @@ function createMenu() {
             if (!result.canceled && result.filePath) {
               mainWindow?.webContents.send('menu:save-as', result.filePath);
             }
+          }
+        },
+        { type: 'separator' },
+        {
+          label: '项目设置',
+          click: () => {
+            mainWindow?.webContents.send('menu:project-settings');
           }
         },
         { type: 'separator' },
@@ -109,7 +117,15 @@ function createMenu() {
         { role: 'cut', accelerator: 'CmdOrCtrl+X', label: '剪切' },
         { role: 'copy', accelerator: 'CmdOrCtrl+C', label: '复制' },
         { role: 'paste', accelerator: 'CmdOrCtrl+V', label: '粘贴' },
-        { role: 'delete', accelerator: 'Delete', label: '删除' }
+        { role: 'delete', accelerator: 'Delete', label: '删除' },
+        { type: 'separator' },
+        {
+          label: '全选',
+          accelerator: 'CmdOrCtrl+A',
+          click: () => {
+            mainWindow?.webContents.send('menu:select-all');
+          }
+        }
       ]
     },
     {
@@ -117,12 +133,30 @@ function createMenu() {
       submenu: [
         { role: 'reload', label: '重新加载' },
         { role: 'forceReload', label: '强制重新加载' },
+        { type: 'separator' },
+        {
+          label: '放大',
+          accelerator: 'CmdOrCtrl+Plus',
+          click: () => {
+            mainWindow?.webContents.send('menu:zoom-in');
+          }
+        },
+        {
+          label: '缩小',
+          accelerator: 'CmdOrCtrl+-',
+          click: () => {
+            mainWindow?.webContents.send('menu:zoom-out');
+          }
+        },
+        {
+          label: '重置缩放',
+          accelerator: 'CmdOrCtrl+0',
+          click: () => {
+            mainWindow?.webContents.send('menu:reset-zoom');
+          }
+        },
+        { type: 'separator' },
         { role: 'toggleDevTools', label: '切换开发者工具' },
-        { type: 'separator' },
-        { role: 'resetZoom', label: '重置缩放' },
-        { role: 'zoomIn', label: '放大' },
-        { role: 'zoomOut', label: '缩小' },
-        { type: 'separator' },
         { role: 'togglefullscreen', label: '切换全屏' }
       ]
     },
@@ -130,9 +164,40 @@ function createMenu() {
       label: '设置',
       submenu: [
         {
+          label: '应用设置',
+          accelerator: 'CmdOrCtrl+,',
+          click: () => {
+            mainWindow?.webContents.send('menu:app-settings');
+          }
+        },
+        {
           label: 'AI 配置',
           click: () => {
             mainWindow?.webContents.send('menu:ai-settings');
+          }
+        }
+      ]
+    },
+    {
+      label: '帮助',
+      submenu: [
+        {
+          label: '快捷键',
+          click: () => {
+            mainWindow?.webContents.send('menu:shortcuts');
+          }
+        },
+        {
+          label: '关于',
+          click: () => {
+            mainWindow?.webContents.send('menu:about');
+          }
+        },
+        { type: 'separator' },
+        {
+          label: 'GitHub',
+          click: () => {
+            require('electron').shell.openExternal('https://github.com/norp/ui-designer');
           }
         }
       ]
