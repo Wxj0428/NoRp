@@ -194,6 +194,7 @@ onMounted(() => {
   // Electron 模式下提示设置工作区
   if (isElectron.value && !workspacePath.value) {
     // 可选：首次启动时提示设置工作区
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     // setupWorkspaceDirectory();
   }
 
@@ -202,7 +203,7 @@ onMounted(() => {
     const electronAPI = (window as any).electronAPI;
 
     // 监听所有菜单事件
-    electronAPI?.onMenuEvent?.((event: string, ...args: any[]) => {
+    electronAPI?.onMenuEvent?.((event: string, ..._args: any[]) => {
       console.log('Menu event received:', event);
 
       switch (event) {
@@ -379,7 +380,7 @@ async function saveProject() {
     }
 
     // Electron 模式 - 选择保存位置
-    let filePath = projectStore.project.path;
+    let filePath: string | undefined = projectStore.project.path ?? undefined;
 
     // 如果是新建项目（没有路径），让用户选择保存位置
     if (!filePath) {
@@ -469,6 +470,7 @@ async function exportHtml() {
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function openAISettings() {
   showAIPanel.value = true;
   showAISettings.value = true;

@@ -82,9 +82,9 @@
             <template v-for="(part, partIndex) in parseMessage(message.content)" :key="partIndex">
               <div v-if="part.type === 'code'" class="my-2">
                 <div class="bg-gray-900 rounded px-2 py-1 text-xs text-green-400 mb-1 flex items-center gap-2">
-                  <span>{{ part.language }}</span>
+                  <span>{{ getLanguage(part) }}</span>
                   <button
-                    v-if="part.language === 'html'"
+                    v-if="getLanguage(part) === 'html'"
                     @click="copyCode(part.content)"
                     class="ml-auto text-gray-400 hover:text-white transition"
                     title="复制代码"
@@ -310,7 +310,7 @@ async function sendMessage() {
 输出格式：使用 \`\`\`html 包裹完整的 HTML 代码`;
 
     // 创建增强的消息数组
-    const enhancedMessages = [
+    const enhancedMessages: ChatMessage[] = [
       { role: 'system', content: '你是一位专业的前端开发工程师和 UI 设计师。请生成完整、美观、可直接使用的 HTML 页面。所有样式必须内联在 style 属性中。不要使用任何外部依赖。' },
       ...messages.value.slice(-10), // 只包含最近10条消息作为上下文
       { role: 'user', content: enhancedPrompt }
@@ -471,6 +471,10 @@ function parseMessage(content: string) {
   }
 
   return parts.length > 0 ? parts : [{ type: 'text', content }];
+}
+
+function getLanguage(part: { type: string; content: string; language?: string }): string {
+  return part.type === 'code' ? (part.language || 'code') : '';
 }
 
 function copyCode(code: string) {

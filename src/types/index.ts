@@ -94,10 +94,18 @@ export interface Component {
     | 'data'
     | 'feedback'
     | 'forms'
-    | 'media';
+    | 'media'
+    | '按钮'
+    | '表单'
+    | '卡片'
+    | '标签'
+    | '提示'
+    | '导航'
+    | '布局'
+    | '页面模板';
   icon: string;
   template: string;
-  defaultStyles: Partial<CSSStyleDeclaration>;
+  defaultStyles?: Partial<CSSStyleDeclaration>;
   props?: ComponentProp[];
   editableAreas?: string[];
 }

@@ -33,7 +33,7 @@
             v-for="component in components"
             :key="component.id"
             draggable="true"
-            @dragstart="handleDragStart($event, component)"
+            @dragstart="handleDragStart($event, component as any)"
             class="bg-gray-900 hover:bg-gray-700 rounded p-3 cursor-grab text-center transition"
           >
             <div class="text-2xl mb-1">{{ component.icon }}</div>
@@ -52,7 +52,7 @@
             v-for="component in components"
             :key="component.id"
             draggable="true"
-            @dragstart="handleDragStart($event, component)"
+            @dragstart="handleDragStart($event, component as any)"
             class="bg-gray-900 hover:bg-gray-700 rounded p-3 cursor-grab text-center transition"
           >
             <div class="text-2xl mb-1">{{ component.icon }}</div>

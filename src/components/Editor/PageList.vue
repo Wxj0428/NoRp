@@ -278,8 +278,8 @@ function startRename(page: Page) {
 }
 
 // Start renaming (from context menu)
-function renamePage(page: any) {
-  startRename(page);
+function renamePage(page: Page | null) {
+  if (page) startRename(page);
 }
 
 // Finish renaming
