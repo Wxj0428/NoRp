@@ -627,6 +627,1037 @@ const components = ref<Component[]>([
   width: 100%;
 }
 </style>`
+  },
+
+  // ========== 页面模板 ==========
+  {
+    id: 'template-dashboard',
+    name: '仪表板布局',
+    category: '页面模板',
+    icon: '📊',
+    template: `<div class="admin-dashboard">
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <h2 class="logo">管理后台</h2>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="#" class="nav-item active">📊 仪表板</a>
+      <a href="#" class="nav-item">👥 用户管理</a>
+      <a href="#" class="nav-item">📦 产品管理</a>
+      <a href="#" class="nav-item">📈 数据分析</a>
+      <a href="#" class="nav-item">⚙️ 系统设置</a>
+    </nav>
+  </aside>
+  <main class="main-content">
+    <header class="topbar">
+      <div class="search-box">
+        <input type="text" placeholder="搜索..." />
+      </div>
+      <div class="user-menu">
+        <span>管理员</span>
+        <div class="avatar">👤</div>
+      </div>
+    </header>
+    <div class="content-area">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-value">1,234</div>
+          <div class="stat-label">总用户数</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">5,678</div>
+          <div class="stat-label">订单数量</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">¥89,012</div>
+          <div class="stat-label">总收入</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">+23%</div>
+          <div class="stat-label">增长率</div>
+        </div>
+      </div>
+      <div class="chart-section">
+        <h3 class="section-title">数据概览</h3>
+        <div class="chart-placeholder">📊 图表区域</div>
+      </div>
+    </div>
+  </main>
+</div>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+.admin-dashboard {
+  display: flex;
+  height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #f5f7fa;
+}
+.sidebar {
+  width: 240px;
+  background: #2c3e50;
+  color: white;
+  display: flex;
+  flex-direction: column;
+}
+.sidebar-header {
+  padding: 20px;
+  border-bottom: 1px solid #34495e;
+}
+.logo {
+  font-size: 20px;
+  font-weight: 600;
+}
+.sidebar-nav {
+  flex: 1;
+  padding: 20px 0;
+}
+.nav-item {
+  display: block;
+  padding: 12px 20px;
+  color: #bdc3c7;
+  text-decoration: none;
+  transition: all 0.2s;
+}
+.nav-item:hover, .nav-item.active {
+  background: #34495e;
+  color: white;
+}
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.topbar {
+  height: 60px;
+  background: white;
+  border-bottom: 1px solid #e1e8ed;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 30px;
+}
+.search-box input {
+  padding: 8px 16px;
+  border: 1px solid #e1e8ed;
+  border-radius: 6px;
+  width: 300px;
+}
+.user-menu {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.avatar {
+  width: 36px;
+  height: 36px;
+  background: #667eea;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+}
+.content-area {
+  flex: 1;
+  padding: 30px;
+  overflow-y: auto;
+}
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+  margin-bottom: 30px;
+}
+.stat-card {
+  background: white;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+.stat-value {
+  font-size: 28px;
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 8px;
+}
+.stat-label {
+  font-size: 14px;
+  color: #7f8c8d;
+}
+.section-title {
+  font-size: 18px;
+  color: #2c3e50;
+  margin-bottom: 16px;
+}
+.chart-placeholder {
+  background: white;
+  padding: 40px;
+  border-radius: 12px;
+  text-align: center;
+  color: #bdc3c7;
+  font-size: 48px;
+}
+</style>`
+  },
+
+  {
+    id: 'template-table',
+    name: '表格页面',
+    category: '页面模板',
+    icon: '📋',
+    template: `<div class="table-page">
+  <div class="page-header">
+    <h1 class="page-title">用户管理</h1>
+    <button class="btn-primary">+ 新增用户</button>
+  </div>
+  <div class="table-toolbar">
+    <div class="search-wrapper">
+      <input type="text" class="search-input" placeholder="搜索用户..." />
+    </div>
+    <div class="filter-group">
+      <select class="filter-select">
+        <option>所有状态</option>
+        <option>启用</option>
+        <option>禁用</option>
+      </select>
+    </div>
+  </div>
+  <div class="table-container">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th><input type="checkbox" /></th>
+          <th>用户名</th>
+          <th>邮箱</th>
+          <th>角色</th>
+          <th>状态</th>
+          <th>注册时间</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><input type="checkbox" /></td>
+          <td>
+            <div class="user-info">
+              <div class="user-avatar">张</div>
+              <span>张三</span>
+            </div>
+          </td>
+          <td>zhang@example.com</td>
+          <td><span class="role-badge admin">管理员</span></td>
+          <td><span class="status-badge active">启用</span></td>
+          <td>2024-01-15</td>
+          <td>
+            <button class="action-btn edit">编辑</button>
+            <button class="action-btn delete">删除</button>
+          </td>
+        </tr>
+        <tr>
+          <td><input type="checkbox" /></td>
+          <td>
+            <div class="user-info">
+              <div class="user-avatar">李</div>
+              <span>李四</span>
+            </div>
+          </td>
+          <td>li@example.com</td>
+          <td><span class="role-badge user">用户</span></td>
+          <td><span class="status-badge active">启用</span></td>
+          <td>2024-01-18</td>
+          <td>
+            <button class="action-btn edit">编辑</button>
+            <button class="action-btn delete">删除</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="table-footer">
+    <div class="page-info">显示 1-10 条，共 50 条</div>
+    <div class="pagination">
+      <button class="page-btn">上一页</button>
+      <button class="page-btn active">1</button>
+      <button class="page-btn">2</button>
+      <button class="page-btn">3</button>
+      <button class="page-btn">下一页</button>
+    </div>
+  </div>
+</div>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+.table-page {
+  padding: 30px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #f5f7fa;
+  min-height: 100vh;
+}
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+.page-title {
+  font-size: 24px;
+  color: #2c3e50;
+}
+.btn-primary {
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+}
+.table-toolbar {
+  background: white;
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  display: flex;
+  gap: 16px;
+}
+.search-wrapper input {
+  padding: 8px 16px;
+  border: 1px solid #e1e8ed;
+  border-radius: 6px;
+  width: 300px;
+}
+.filter-select {
+  padding: 8px 16px;
+  border: 1px solid #e1e8ed;
+  border-radius: 6px;
+}
+.table-container {
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.data-table th {
+  background: #f8f9fa;
+  padding: 16px;
+  text-align: left;
+  font-weight: 600;
+  color: #2c3e50;
+  border-bottom: 2px solid #e1e8ed;
+}
+.data-table td {
+  padding: 16px;
+  border-bottom: 1px solid #f1f3f5;
+}
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.user-avatar {
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 600;
+}
+.role-badge {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+.role-badge.admin { background: #ffeaa7; color: #d35400; }
+.role-badge.user { background: #dfe6e9; color: #2d3436; }
+.status-badge {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+.status-badge.active { background: #d4edda; color: #155724; }
+.action-btn {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  margin-right: 8px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.action-btn.edit { background: #3498db; color: white; }
+.action-btn.delete { background: #e74c3c; color: white; }
+.table-footer {
+  margin-top: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.page-info { color: #7f8c8d; }
+.pagination { display: flex; gap: 8px; }
+.page-btn {
+  padding: 8px 16px;
+  border: 1px solid #e1e8ed;
+  background: white;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.page-btn.active {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-color: transparent;
+}
+</style>`
+  },
+
+  {
+    id: 'template-form',
+    name: '表单页面',
+    category: '页面模板',
+    icon: '📝',
+    template: `<div class="form-page">
+  <div class="form-container">
+    <div class="form-header">
+      <h1 class="form-title">新增用户</h1>
+      <p class="form-subtitle">请填写用户基本信息</p>
+    </div>
+    <form class="form-body">
+      <div class="form-section">
+        <h3 class="section-title">基本信息</h3>
+        <div class="form-group">
+          <label class="form-label">用户名 <span class="required">*</span></label>
+          <input type="text" class="form-input" placeholder="请输入用户名" />
+          <span class="form-hint">用户名长度应为 3-20 个字符</span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">邮箱 <span class="required">*</span></label>
+          <input type="email" class="form-input" placeholder="example@email.com" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">手机号</label>
+          <input type="tel" class="form-input" placeholder="请输入手机号" />
+        </div>
+      </div>
+      <div class="form-section">
+        <h3 class="section-title">角色与权限</h3>
+        <div class="form-group">
+          <label class="form-label">用户角色 <span class="required">*</span></label>
+          <select class="form-select">
+            <option>请选择角色</option>
+            <option>管理员</option>
+            <option>编辑</option>
+            <option>普通用户</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">权限设置</label>
+          <div class="checkbox-group">
+            <label class="checkbox-item">
+              <input type="checkbox" checked />
+              <span>查看数据</span>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" checked />
+              <span>编辑数据</span>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" />
+              <span>删除数据</span>
+            </label>
+            <label class="checkbox-item">
+              <input type="checkbox" />
+              <span>导出数据</span>
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="form-section">
+        <h3 class="section-title">其他信息</h3>
+        <div class="form-group">
+          <label class="form-label">备注</label>
+          <textarea class="form-textarea" rows="4" placeholder="请输入备注信息"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="checkbox-item">
+            <input type="checkbox" />
+            <span>发送欢迎邮件给用户</span>
+          </label>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn-secondary">取消</button>
+        <button type="submit" class="btn-primary">保存</button>
+      </div>
+    </form>
+  </div>
+</div>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+.form-page {
+  min-height: 100vh;
+  background: #f5f7fa;
+  padding: 30px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+.form-container {
+  max-width: 800px;
+  margin: 0 auto;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+}
+.form-header {
+  padding: 30px;
+  border-bottom: 1px solid #e1e8ed;
+}
+.form-title {
+  font-size: 24px;
+  color: #2c3e50;
+  margin-bottom: 8px;
+}
+.form-subtitle {
+  color: #7f8c8d;
+  font-size: 14px;
+}
+.form-body {
+  padding: 30px;
+}
+.form-section {
+  margin-bottom: 30px;
+}
+.section-title {
+  font-size: 16px;
+  color: #2c3e50;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #f1f3f5;
+}
+.form-group {
+  margin-bottom: 20px;
+}
+.form-label {
+  display: block;
+  margin-bottom: 8px;
+  color: #2c3e50;
+  font-weight: 500;
+  font-size: 14px;
+}
+.required { color: #e74c3c; }
+.form-input, .form-select {
+  width: 100%;
+  padding: 10px 16px;
+  border: 1px solid #e1e8ed;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+.form-input:focus, .form-select:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+.form-hint {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #95a5a6;
+}
+.form-textarea {
+  width: 100%;
+  padding: 10px 16px;
+  border: 1px solid #e1e8ed;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+}
+.checkbox-group {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+.checkbox-item {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+.checkbox-item input {
+  width: 18px;
+  height: 18px;
+  margin-right: 8px;
+  accent-color: #667eea;
+}
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 20px;
+  border-top: 1px solid #e1e8ed;
+}
+.btn-primary, .btn-secondary {
+  padding: 10px 24px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+.btn-secondary {
+  background: #ecf0f1;
+  color: #2c3e50;
+}
+</style>`
+  },
+
+  {
+    id: 'template-login',
+    name: '登录页面',
+    category: '页面模板',
+    icon: '🔐',
+    template: `<div class="login-page">
+  <div class="login-container">
+    <div class="login-header">
+      <div class="logo">🔐</div>
+      <h1 class="login-title">欢迎回来</h1>
+      <p class="login-subtitle">登录到您的账户</p>
+    </div>
+    <form class="login-form">
+      <div class="form-group">
+        <label class="form-label">邮箱地址</label>
+        <div class="input-wrapper">
+          <span class="input-icon">📧</span>
+          <input type="email" class="form-input" placeholder="your@email.com" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">密码</label>
+        <div class="input-wrapper">
+          <span class="input-icon">🔒</span>
+          <input type="password" class="form-input" placeholder="••••••••" />
+        </div>
+      </div>
+      <div class="form-options">
+        <label class="checkbox-label">
+          <input type="checkbox" />
+          <span>记住我</span>
+        </label>
+        <a href="#" class="forgot-link">忘记密码？</a>
+      </div>
+      <button type="submit" class="login-btn">登录</button>
+      <div class="divider">
+        <span>或</span>
+      </div>
+      <div class="social-login">
+        <button type="button" class="social-btn">
+          <span>🔑</span>
+          <span>GitHub</span>
+        </button>
+        <button type="button" class="social-btn">
+          <span>🔷</span>
+          <span>Google</span>
+        </button>
+      </div>
+    </form>
+    <div class="login-footer">
+      <p>还没有账户？<a href="#" class="register-link">立即注册</a></p>
+    </div>
+  </div>
+</div>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+.login-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+.login-container {
+  background: white;
+  border-radius: 16px;
+  padding: 40px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+.login-header {
+  text-align: center;
+  margin-bottom: 32px;
+}
+.logo {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+.login-title {
+  font-size: 24px;
+  color: #2c3e50;
+  margin-bottom: 8px;
+}
+.login-subtitle {
+  color: #7f8c8d;
+  font-size: 14px;
+}
+.login-form { margin-bottom: 24px; }
+.form-group { margin-bottom: 20px; }
+.form-label {
+  display: block;
+  margin-bottom: 8px;
+  color: #2c3e50;
+  font-size: 14px;
+  font-weight: 500;
+}
+.input-wrapper {
+  position: relative;
+}
+.input-icon {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 18px;
+}
+.form-input {
+  width: 100%;
+  padding: 12px 16px 12px 48px;
+  border: 1px solid #e1e8ed;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+.form-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+.form-options {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-size: 14px;
+  color: #7f8c8d;
+}
+.checkbox-label input {
+  margin-right: 8px;
+  accent-color: #667eea;
+}
+.forgot-link {
+  color: #667eea;
+  text-decoration: none;
+  font-size: 14px;
+}
+.login-btn {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+.login-btn:hover {
+  transform: translateY(-2px);
+}
+.divider {
+  position: relative;
+  text-align: center;
+  margin: 24px 0;
+}
+.divider::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 100%;
+  height: 1px;
+  background: #e1e8ed;
+}
+.divider span {
+  position: relative;
+  background: white;
+  padding: 0 16px;
+  color: #95a5a6;
+  font-size: 14px;
+}
+.social-login {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.social-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid #e1e8ed;
+  border-radius: 8px;
+  background: white;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+.social-btn:hover {
+  background: #f8f9fa;
+  border-color: #667eea;
+}
+.login-footer {
+  text-align: center;
+  font-size: 14px;
+  color: #7f8c8d;
+}
+.register-link {
+  color: #667eea;
+  text-decoration: none;
+  font-weight: 600;
+}
+</style>`
+  },
+
+  {
+    id: 'template-settings',
+    name: '设置页面',
+    category: '页面模板',
+    icon: '⚙️',
+    template: `<div class="settings-page">
+  <aside class="settings-sidebar">
+    <h2 class="sidebar-title">设置</h2>
+    <nav class="sidebar-nav">
+      <a href="#" class="nav-item active">👤 个人资料</a>
+      <a href="#" class="nav-item">🔐 账户安全</a>
+      <a href="#" class="nav-item">🔔 通知设置</a>
+      <a href="#" class="nav-item">🎨 外观设置</a>
+      <a href="#" class="nav-item">🔑 API 密钥</a>
+      <a href="#" class="nav-item">📊 使用统计</a>
+    </nav>
+  </aside>
+  <main class="settings-main">
+    <div class="settings-content">
+      <h1 class="page-title">个人资料</h1>
+      <div class="profile-section">
+        <div class="avatar-section">
+          <div class="avatar-large">👤</div>
+          <button class="avatar-btn">更换头像</button>
+        </div>
+        <form class="profile-form">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">名</label>
+              <input type="text" class="form-input" value="张" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">姓</label>
+              <input type="text" class="form-input" value="三" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">用户名</label>
+            <input type="text" class="form-input" value="zhangsan" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">邮箱地址</label>
+            <input type="email" class="form-input" value="zhangsan@example.com" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">个人简介</label>
+            <textarea class="form-textarea" rows="4">全栈开发工程师，热爱技术</textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label">时区</label>
+            <select class="form-select">
+              <option>UTC+8 北京时间</option>
+              <option>UTC+9 东京时间</option>
+              <option>UTC-5 纽约时间</option>
+            </select>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn-secondary">取消</button>
+            <button type="submit" class="btn-primary">保存更改</button>
+          </div>
+        </form>
+      </div>
+      <div class="danger-zone">
+        <h3 class="zone-title">危险区域</h3>
+        <p class="zone-description">这些操作是不可逆的，请谨慎操作</p>
+        <button class="danger-btn">删除账户</button>
+      </div>
+    </div>
+  </main>
+</div>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+.settings-page {
+  display: flex;
+  min-height: 100vh;
+  background: #f5f7fa;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+.settings-sidebar {
+  width: 280px;
+  background: white;
+  border-right: 1px solid #e1e8ed;
+  padding: 24px 0;
+}
+.sidebar-title {
+  padding: 0 24px;
+  font-size: 20px;
+  color: #2c3e50;
+  margin-bottom: 20px;
+}
+.sidebar-nav { padding: 0 12px; }
+.nav-item {
+  display: block;
+  padding: 12px 16px;
+  color: #7f8c8d;
+  text-decoration: none;
+  border-radius: 8px;
+  margin-bottom: 4px;
+  transition: all 0.2s;
+}
+.nav-item:hover, .nav-item.active {
+  background: #f1f3f5;
+  color: #2c3e50;
+}
+.settings-main {
+  flex: 1;
+  padding: 40px;
+  overflow-y: auto;
+}
+.settings-content { max-width: 800px; }
+.page-title {
+  font-size: 28px;
+  color: #2c3e50;
+  margin-bottom: 32px;
+}
+.profile-section {
+  background: white;
+  border-radius: 12px;
+  padding: 32px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+.avatar-section {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 32px;
+  padding-bottom: 32px;
+  border-bottom: 1px solid #e1e8ed;
+}
+.avatar-large {
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36px;
+}
+.avatar-btn {
+  padding: 8px 16px;
+  border: 1px solid #e1e8ed;
+  background: white;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+.form-group { margin-bottom: 20px; }
+.form-label {
+  display: block;
+  margin-bottom: 8px;
+  color: #2c3e50;
+  font-size: 14px;
+  font-weight: 500;
+}
+.form-input, .form-select {
+  width: 100%;
+  padding: 10px 16px;
+  border: 1px solid #e1e8ed;
+  border-radius: 6px;
+  font-size: 14px;
+}
+.form-textarea {
+  width: 100%;
+  padding: 10px 16px;
+  border: 1px solid #e1e8ed;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+}
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 20px;
+  border-top: 1px solid #e1e8ed;
+}
+.btn-primary, .btn-secondary {
+  padding: 10px 24px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+}
+.btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+.btn-secondary {
+  background: #ecf0f1;
+  color: #2c3e50;
+}
+.danger-zone {
+  background: #fff5f5;
+  border: 1px solid #fed7d7;
+  border-radius: 12px;
+  padding: 24px;
+}
+.zone-title {
+  font-size: 16px;
+  color: #c53030;
+  margin-bottom: 8px;
+}
+.zone-description {
+  color: #718096;
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+.danger-btn {
+  padding: 10px 20px;
+  background: #fc8181;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+</style>`
   }
 ]);
 

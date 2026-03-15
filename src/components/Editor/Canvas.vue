@@ -51,6 +51,25 @@
       </div>
 
       <div class="w-px h-6 bg-gray-600"></div>
+
+      <!-- Delete Button -->
+      <button
+        @click="handleDeleteSelected"
+        :disabled="!selectedElement"
+        class="p-2 hover:bg-red-600 rounded disabled:opacity-30 disabled:cursor-not-allowed"
+        title="删除选中元素 (Delete)"
+      >
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+          />
+        </svg>
+      </button>
+
+      <div class="w-px h-6 bg-gray-600"></div>
       <button
         @click="handleZoomOut"
         class="p-2 hover:bg-gray-700 rounded"
@@ -125,7 +144,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, computed } from 'vue';
+import { ref, onMounted, onUnmounted, watch, computed } from 'vue';
 import { useEditorStore } from '@/stores/editor';
 import { useProjectStore } from '@/stores/project';
 
@@ -221,6 +240,9 @@ onMounted(() => {
         doc.addEventListener('mousemove', handleElementMouseMove, true);
         doc.addEventListener('mouseup', handleElementMouseUp, true);
 
+        // 添加键盘事件监听（用于删除等快捷键）
+        doc.addEventListener('keydown', handleKeyDown, true);
+
         // Add drop event listeners to the page container
         if (container) {
           attachDropHandlers(container);
@@ -230,6 +252,18 @@ onMounted(() => {
       }, 100);
     }
   }
+
+  // 监听来自属性面板的删除事件
+  window.addEventListener('delete-element', handleDeleteEvent);
+});
+
+// 清理键盘事件监听器
+onUnmounted(() => {
+  const doc = canvasFrame.value?.contentDocument;
+  if (doc) {
+    doc.removeEventListener('keydown', handleKeyDown, true);
+  }
+  window.removeEventListener('delete-element', handleDeleteEvent);
 });
 
 // Watch for page changes
@@ -506,6 +540,88 @@ function handleUndo() {
 
 function handleRedo() {
   editorStore.redo();
+}
+
+function handleDeleteSelected() {
+  const selected = editorStore.selectedElement;
+  if (!selected || !canvasFrame.value?.contentDocument) return;
+
+  // 确认删除
+  const confirmed = confirm('确定要删除这个元素吗？');
+  if (!confirmed) return;
+
+  // 从 DOM 中移除元素
+  selected.remove();
+
+  // 更新项目 HTML
+  const container = canvasFrame.value.contentDocument.querySelector('.page-container');
+  if (container) {
+    projectStore.updatePageHtml(container.innerHTML);
+  }
+
+  // 清除选中状态
+  editorStore.selectElement(null);
+
+  console.log('Element deleted');
+}
+
+function handleDeleteEvent(e: any) {
+  const element = e.detail.element;
+  if (!element || !canvasFrame.value?.contentDocument) return;
+
+  // 从 DOM 中移除元素
+  element.remove();
+
+  // 更新项目 HTML
+  const container = canvasFrame.value.contentDocument.querySelector('.page-container');
+  if (container) {
+    projectStore.updatePageHtml(container.innerHTML);
+  }
+
+  // 清除选中状态
+  editorStore.selectElement(null);
+
+  console.log('Element deleted via property panel');
+}
+
+function handleKeyDown(e: KeyboardEvent) {
+  // Delete 或 Backspace 键删除选中元素
+  if ((e.key === 'Delete' || e.key === 'Backspace') && editorStore.selectedElement) {
+    // 避免在输入框中删除文本时触发元素删除
+    const target = e.target as HTMLElement;
+    if (
+      target.tagName === 'INPUT' ||
+      target.tagName === 'TEXTAREA' ||
+      target.contentEditable === 'true'
+    ) {
+      return;
+    }
+
+    e.preventDefault();
+    handleDeleteSelected();
+  }
+
+  // Ctrl+Z 撤销
+  if (e.key === 'z' && (e.ctrlKey || e.metaKey)) {
+    e.preventDefault();
+    if (e.shiftKey) {
+      editorStore.redo();
+    } else {
+      editorStore.undo();
+    }
+  }
+
+  // Ctrl+Y 重做
+  if (e.key === 'y' && (e.ctrlKey || e.metaKey)) {
+    e.preventDefault();
+    editorStore.redo();
+  }
+
+  // Escape 取消选中
+  if (e.key === 'Escape' && editorStore.selectedElement) {
+    e.preventDefault();
+    editorStore.selectElement(null);
+  }
 }
 
 function setDevice(device: any) {

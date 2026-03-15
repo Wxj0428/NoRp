@@ -227,6 +227,19 @@
           <option value="none">隐藏</option>
         </select>
       </div>
+
+      <!-- Actions -->
+      <div class="pt-4 border-t border-gray-700 space-y-2">
+        <button
+          @click="handleDelete"
+          class="w-full py-2 px-4 bg-red-600 hover:bg-red-700 text-white rounded font-medium transition"
+        >
+          🗑️ 删除元素
+        </button>
+        <div class="text-xs text-gray-500 text-center">
+          快捷键: Delete 或 Backspace
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -305,6 +318,18 @@ function updateStyle() {
     borderColor: styles.value.borderColor,
     display: styles.value.display
   });
+}
+
+function handleDelete() {
+  if (!selectedElement.value) return;
+
+  const confirmed = confirm('确定要删除这个元素吗？');
+  if (!confirmed) return;
+
+  // 触发自定义事件，让 Canvas 组件处理删除
+  window.dispatchEvent(new CustomEvent('delete-element', {
+    detail: { element: selectedElement.value }
+  }));
 }
 
 function rgbToHex(rgb: string): string {
