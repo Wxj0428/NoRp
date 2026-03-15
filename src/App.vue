@@ -21,55 +21,23 @@
         </div>
 
         <div class="flex gap-2">
-          <button
-            @click="newProject"
-            class="px-3 py-1 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded"
-          >
+          <button @click="newProject" class="px-3 py-1 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
             新建
           </button>
-          <button
-            @click="openProject"
-            class="px-3 py-1 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded"
-          >
+          <button @click="openProject" class="px-3 py-1 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
             打开
           </button>
-          <button
-            @click="saveProject"
-            :class="[
-              'px-3 py-1 text-sm rounded',
-              projectStore.isDirty
-                ? 'text-yellow-300 hover:text-yellow-200 hover:bg-gray-700'
-                : 'text-gray-300 hover:text-white hover:bg-gray-700'
-            ]"
-          >
+          <button @click="saveProject" :class="['px-3 py-1 text-sm rounded', projectStore.isDirty ? 'text-yellow-300 hover:text-yellow-200 hover:bg-gray-700' : 'text-gray-300 hover:text-white hover:bg-gray-700']">
             保存
           </button>
-          <button
-            @click="exportHtml"
-            class="px-3 py-1 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded"
-          >
+          <button @click="exportHtml" class="px-3 py-1 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
             导出
           </button>
         </div>
       </div>
       <div class="flex-1"></div>
-      <button
-        @click="showProjectSettings = true"
-        class="px-3 py-1 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded"
-      >
-        项目设置
-      </button>
-      <button
-        @click="showAppSettings = true"
-        class="px-3 py-1 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded"
-      >
-        应用设置
-      </button>
-      <button
-        @click="showAISettings = true"
-        class="px-3 py-1 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded"
-      >
-        AI 设置
+      <button @click="showAIPanel = !showAIPanel" class="px-3 py-1 text-sm text-gray-300 hover:text-white hover:bg-gray-700 rounded">
+        AI 面板
       </button>
     </header>
 
@@ -77,26 +45,26 @@
     <div class="flex-1 flex overflow-hidden">
       <!-- Left Panel: Pages -->
       <aside class="w-48 bg-gray-800 border-r border-gray-700 flex flex-col">
-        <PageList />
+        <PageList></PageList>
       </aside>
 
       <!-- Left Panel: Component Library -->
       <aside class="w-64 bg-gray-800 border-r border-gray-700 overflow-y-auto">
-        <ComponentPalette />
+        <ComponentPalette></ComponentPalette>
       </aside>
 
       <!-- Center: Canvas -->
       <main class="flex-1 bg-gray-900 overflow-hidden relative">
-        <Canvas />
+        <Canvas></Canvas>
       </main>
 
       <!-- Right Panel: Properties & Layers -->
       <aside class="w-80 bg-gray-800 border-l border-gray-700 overflow-y-auto">
         <div class="border-b border-gray-700">
-          <PropertyPanel />
+          <PropertyPanel></PropertyPanel>
         </div>
         <div>
-          <LayerTree />
+          <LayerTree></LayerTree>
         </div>
       </aside>
     </div>
@@ -128,12 +96,17 @@
 
         <div class="w-px h-4 bg-gray-700"></div>
 
-        <!-- Project Path (Electron only) -->
-        <div v-if="projectPath" class="flex items-center gap-2">
-          <span>项目位置:</span>
-          <span class="text-gray-300 truncate max-w-[300px]" :title="projectPath">
-            {{ projectPath }}
+        <!-- Project Path -->
+        <div v-if="projectPath || projectStore.project?.path" class="flex items-center gap-2">
+          <span>项目:</span>
+          <span class="text-gray-300 truncate max-w-[300px]" :title="projectPath || projectStore.project?.path">
+            {{ projectPathDisplay }}
           </span>
+          <span v-if="!projectStore.project?.path" class="text-yellow-400 text-xs">(未保存)</span>
+        </div>
+        <div v-else class="flex items-center gap-2">
+          <span>项目:</span>
+          <span class="text-gray-400">未保存</span>
         </div>
       </div>
 
@@ -147,7 +120,7 @@
     </footer>
 
     <!-- AI Panel (Floating) -->
-    <ChatPanel v-if="showAIPanel" class="fixed bottom-12 right-4 w-96 h-[600px]" />
+    <ChatPanel v-if="showAIPanel" class="fixed bottom-12 right-4 w-96 h-[600px]"></ChatPanel>
 
     <!-- Toggle AI Panel Button -->
     <button
@@ -157,31 +130,6 @@
     >
       🤖
     </button>
-
-    <!-- AI Settings Modal -->
-    <AISettings v-if="showAISettings" @close="showAISettings = false" />
-
-    <!-- New Project Dialog -->
-    <NewProjectDialog
-      v-if="showNewProjectDialog"
-      @create="handleNewProject"
-      @cancel="showNewProjectDialog = false"
-    />
-
-    <!-- Project Settings Dialog -->
-    <ProjectSettingsDialog
-      v-if="showProjectSettings && projectStore.project"
-      :project="projectStore.project"
-      @save="handleProjectSettingsSave"
-      @cancel="showProjectSettings = false"
-    />
-
-    <!-- App Settings Dialog -->
-    <AppSettingsDialog
-      v-if="showAppSettings"
-      @save="handleAppSettingsSave"
-      @cancel="showAppSettings = false"
-    />
   </div>
 </template>
 
@@ -193,31 +141,31 @@ import LayerTree from './components/Editor/LayerTree.vue';
 import PageList from './components/Editor/PageList.vue';
 import ComponentPalette from './components/ComponentLibrary/ComponentPalette.vue';
 import ChatPanel from './components/AIPanel/ChatPanel.vue';
-import AISettings from './components/AIPanel/AISettings.vue';
-import NewProjectDialog from './components/Dialogs/NewProjectDialog.vue';
-import ProjectSettingsDialog from './components/Dialogs/ProjectSettingsDialog.vue';
-import AppSettingsDialog from './components/Dialogs/AppSettingsDialog.vue';
 import { useProjectStore } from './stores/project';
 import { useEditorStore } from './stores/editor';
 import { storageService } from './services/storage';
-import { exportService } from './services/export';
-import type { ExportOptions } from './types';
+import { generateStandaloneHTML } from './services/html-generator';
 
 const projectStore = useProjectStore();
 const editorStore = useEditorStore();
 
 const showAIPanel = ref(false);
-const showAISettings = ref(false);
-const showNewProjectDialog = ref(false);
-const showProjectSettings = ref(false);
-const showAppSettings = ref(false);
 const isElectron = ref(false);
 const projectPath = ref<string | null>(null);
+const workspacePath = ref<string | null>(null);
+
+// 项目路径显示（截断显示）
+const projectPathDisplay = computed(() => {
+  if (!projectPath.value) return '未保存';
+  if (projectPath.value.length > 50) {
+    return '...' + projectPath.value.slice(-47);
+  }
+  return projectPath.value;
+});
 
 // Computed: Element count in current page
 const elementCount = computed(() => {
   if (!projectStore.currentPage?.html) return 0;
-  // Count self-closing tags and opening tags
   const html = projectStore.currentPage.html;
   const selfClosing = html.match(/<(img|br|hr|input|meta|link)[^>]*>/gi)?.length || 0;
   const openingTags = html.match(/<([a-z][a-z0-9]*)\b[^>]*>/gi)?.length || 0;
@@ -225,122 +173,89 @@ const elementCount = computed(() => {
 });
 
 onMounted(() => {
-  // Create a default project on startup
   projectStore.createProject('Untitled Project');
-
-  // Debug: Check if electronAPI is available
   isElectron.value = !!(window as any).electronAPI;
-  console.log('Running in Electron:', isElectron.value);
-  console.log('electronAPI:', (window as any).electronAPI);
 
-  // Listen for menu events if in Electron
-  if (isElectron.value && (window as any).electronAPI?.onMenuEvent) {
-    (window as any).electronAPI.onMenuEvent((event: string, ...args: any[]) => {
-      switch (event) {
-        case 'menu:new-project':
-          newProject();
-          break;
-        case 'menu:open-project':
-          if (args[0]) {
-            openProjectFromFile(args[0]);
-          }
-          break;
-        case 'menu:save':
-          saveProject();
-          break;
-        case 'menu:export':
-          if (args[0]) {
-            exportHtmlTo(args[0]);
-          }
-          break;
-        case 'menu:ai-settings':
-          showAISettings.value = true;
-          break;
-        case 'menu:project-settings':
-          showProjectSettings.value = true;
-          break;
-        case 'menu:app-settings':
-          showAppSettings.value = true;
-          break;
-        case 'menu:shortcuts':
-          showAppSettings.value = true; // Open app settings with shortcuts tab
-          break;
-        case 'menu:about':
-          showAppSettings.value = true; // Open app settings with about tab
-          break;
-        case 'menu:zoom-in':
-          editorStore.setZoom(editorStore.zoom + 0.1);
-          break;
-        case 'menu:zoom-out':
-          editorStore.setZoom(editorStore.zoom - 0.1);
-          break;
-        case 'menu:reset-zoom':
-          editorStore.resetView();
-          break;
-        case 'menu:select-all':
-          // TODO: Implement select all functionality
-          console.log('Select all - to be implemented');
-          break;
-      }
-    });
+  console.log('Running in Electron:', isElectron.value);
+
+  // Electron 模式下提示设置工作区
+  if (isElectron.value && !workspacePath.value) {
+    // 可选：首次启动时提示设置工作区
+    // setupWorkspaceDirectory();
   }
 });
 
-async function openProjectFromFile(filePath: string) {
+// Setup workspace directory
+async function setupWorkspaceDirectory() {
   try {
-    const project = await storageService.loadProject(filePath);
-    if (project) {
-      projectStore.loadProject(project);
-      editorStore.clearHistory();
+    const result = await storageService.showOpenDialog({
+      properties: ['openDirectory'],
+      title: '选择工作区目录'
+    });
+
+    if (!result.canceled && result.filePaths && result.filePaths.length > 0) {
+      workspacePath.value = result.filePaths[0];
+      console.log('工作区目录设置成功:', workspacePath.value);
+      alert('工作区目录已设置:\n' + workspacePath.value);
     }
   } catch (error) {
-    console.error('Failed to open project:', error);
-    alert('打开项目失败');
+    console.error('设置工作区失败:', error);
   }
 }
 
-async function exportHtmlTo(filePath: string) {
+// 为项目选择保存位置
+async function chooseProjectLocation() {
   try {
-    if (!projectStore.project) return;
+    const result = await storageService.showSaveDialog({
+      title: '保存项目',
+      defaultPath: projectStore.project?.name || 'Untitled Project',
+      filters: [
+        { name: 'NoRp Project', extensions: ['norp'] }
+      ]
+    });
 
-    const options: ExportOptions = {
-      format: 'html-single',
-      minify: false,
-      includeDependencies: false,
-      responsive: true
-    };
-
-    const result = exportService.exportToSingleHTML(projectStore.project, options);
-    await storageService.writeFile(filePath, result.html);
-    alert('导出成功！');
+    if (!result.canceled && result.filePath) {
+      return result.filePath;
+    }
+    return null;
   } catch (error) {
-    console.error('Failed to export:', error);
-    alert('导出失败');
+    console.error('选择项目位置失败:', error);
+    return null;
   }
 }
 
-async function newProject() {
+function newProject() {
+  console.log('newProject 被调用');
+
   if (projectStore.isDirty) {
+    console.log('项目未保存，显示确认对话框');
     const confirmed = confirm('当前项目未保存，是否继续？');
-    if (!confirmed) return;
+    if (!confirmed) {
+      console.log('用户取消新建项目');
+      return;
+    }
   }
-  // 显示新建项目对话框
-  showNewProjectDialog.value = true;
-}
 
-function handleNewProject(config: any) {
-  projectStore.createProject(config.name);
-  // 应用其他设置...
-  showNewProjectDialog.value = false;
+  // 重置项目路径
+  console.log('重置项目路径');
+  projectPath.value = null;
+
+  // 创建新项目
+  console.log('创建新项目');
+  projectStore.createProject('New Project');
+
+  // 确保编辑器状态也被重置
+  editorStore.selectElement(null);
+
+  console.log('新项目已创建完成');
+  console.log('当前项目:', projectStore.project);
+  console.log('当前页面:', projectStore.currentPage);
 }
 
 async function openProject() {
   try {
-    console.log('开始打开项目...');
-
-    // Check if running in Electron
+    // 浏览器模式 - 使用文件输入
     if (!(window as any).electronAPI) {
-      // 浏览器模式 - 使用文件输入
       const input = document.createElement('input');
       input.type = 'file';
       input.accept = '.norp,.json';
@@ -368,91 +283,84 @@ async function openProject() {
       return;
     }
 
+    // Electron 模式
     const result = await storageService.showOpenDialog();
-    console.log('打开对话框结果:', result);
-
-    if (result.canceled) {
-      console.log('用户取消打开');
-      return;
-    }
+    if (result.canceled) return;
 
     if (!result.filePaths || result.filePaths.length === 0) {
-      alert('❌ 未选择文件');
+      alert('未选择文件');
       return;
     }
 
     const filePath = result.filePaths[0];
-    console.log('打开文件:', filePath);
-
     const project = await storageService.loadProject(filePath);
     if (project) {
+      // 设置项目路径
+      project.path = filePath;
       projectStore.loadProject(project);
       projectPath.value = filePath;
       editorStore.clearHistory();
-      alert('✅ 项目已打开: ' + project.name);
+      alert('✅ 项目已打开: ' + project.name + '\n\n位置: ' + filePath);
     } else {
       alert('❌ 无法打开项目\n\n文件可能已损坏或格式不正确');
     }
   } catch (error) {
     console.error('打开项目异常:', error);
-    alert('❌ 打开项目失败:\n' + (error instanceof Error ? error.message : String(error)));
+    alert('打开项目失败');
   }
 }
 
 async function saveProject() {
   try {
-    console.log('开始保存项目...');
-    console.log('项目数据:', projectStore.project);
-    console.log('electronAPI 可用:', !!(window as any).electronAPI);
-
     if (!projectStore.project) {
-      alert('❌ 没有可保存的项目');
+      alert('没有可保存的项目');
       return;
     }
 
-    // Check if running in Electron
+    // 浏览器模式 - 下载 JSON 文件
     if (!(window as any).electronAPI) {
-      // 浏览器模式 - 导出 JSON 文件
       const content = JSON.stringify(projectStore.project, null, 2);
       const blob = new Blob([content], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${projectStore.project.name}.norp`;
+      a.download = projectStore.project.name + '.norp';
       a.click();
       URL.revokeObjectURL(url);
 
-      alert('✅ 项目已导出（浏览器模式：文件已下载）\n\n💡 提示：在 Electron 应用中可以保存到任意位置');
+      projectStore.markAsSaved();
+      alert('✅ 项目已导出（浏览器模式：文件已下载）\n\n💡 提示：在 Electron 应用中可以保存到指定位置');
       return;
     }
 
-    // Electron 模式 - 使用文件对话框
-    console.log('显示保存对话框...');
-    const result = await storageService.showSaveDialog({
-      defaultPath: `${projectStore.project.name}.norp`,
-      title: '保存项目'
-    });
+    // Electron 模式 - 选择保存位置
+    let filePath = projectStore.project.path;
 
-    console.log('对话框结果:', result);
+    // 如果是新建项目（没有路径），让用户选择保存位置
+    if (!filePath) {
+      filePath = await chooseProjectLocation();
+      if (!filePath) {
+        // 用户取消
+        return;
+      }
 
-    if (result.canceled) {
-      console.log('用户取消保存');
-      return;
+      // 确保文件扩展名是 .norp
+      if (!filePath.endsWith('.norp')) {
+        filePath = filePath + '.norp';
+      }
+
+      // 更新项目路径
+      projectStore.project.path = filePath;
+      projectPath.value = filePath;
     }
 
-    if (!result.filePath) {
-      alert('❌ 未选择保存位置');
-      return;
-    }
-
-    console.log('保存到:', result.filePath);
-    const success = await storageService.saveProject(result.filePath, projectStore.project);
+    const success = await storageService.saveProject(filePath, projectStore.project);
 
     if (success) {
       projectStore.markAsSaved();
-      projectPath.value = result.filePath;
-      alert('✅ 项目已保存到:\n' + result.filePath);
-      console.log('保存成功');
+      projectStore.project.modifiedAt = new Date();
+      projectPath.value = filePath;
+      alert('✅ 项目已保存到:\n' + filePath);
     } else {
       alert('❌ 保存失败\n\n请检查:\n1. 是否有写入权限\n2. 磁盘空间是否充足\n3. 文件是否被其他程序占用');
     }
@@ -469,65 +377,53 @@ async function exportHtml() {
       return;
     }
 
-    const options: ExportOptions = {
-      format: 'html-single',
-      minify: false,
-      includeDependencies: false,
-      responsive: true
-    };
+    const html = generateStandaloneHTML(projectStore.project);
 
-    const result = exportService.exportToSingleHTML(projectStore.project, options);
-
-    // Check if running in Electron
+    // 浏览器模式 - 直接下载文件
     if (!(window as any).electronAPI) {
-      // Browser mode - download using Blob
-      const blob = new Blob([result.html], { type: 'text/html' });
+      const blob = new Blob([html], { type: 'text/html' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${projectStore.project.name}.html`;
+      a.download = projectStore.project.name + '.html';
       a.click();
       URL.revokeObjectURL(url);
-      alert('导出成功！');
+      alert('✅ 导出成功！\n\n文件已下载到浏览器下载目录。');
       return;
     }
 
-    // Electron mode - show save dialog
-    const defaultPath = `${projectStore.project.name}.html`;
-    const saveResult = await storageService.showSaveDialog({
-      filters: [{ name: 'HTML File', extensions: ['html'] }],
-      defaultPath
-    });
-
-    if (!saveResult.canceled && saveResult.filePath) {
-      await storageService.writeFile(saveResult.filePath, result.html);
-      alert('导出成功！文件已保存到: ' + saveResult.filePath);
+    // Electron 模式 - 导出到项目旁边的 _导出 目录
+    if (!projectStore.project.path) {
+      alert('❌ 请先保存项目\n\n项目需要先保存才能导出到指定位置。');
+      return;
     }
+
+    // 从项目文件路径推导出导出目录
+    // 例如：D:/projects/MyWebsite.norp -> D:/projects/MyWebsite_导出/
+    const projectFilePath = projectStore.project.path;
+    const lastSlashIndex = projectFilePath.lastIndexOf('/');
+    const lastBackslashIndex = projectFilePath.lastIndexOf('\\');
+    const slashIndex = Math.max(lastSlashIndex, lastBackslashIndex);
+
+    if (slashIndex === -1) {
+      alert('❌ 无法确定项目位置\n\n请先保存项目。');
+      return;
+    }
+
+    const projectDir = projectFilePath.substring(0, slashIndex);
+    const projectName = projectStore.project.name;
+    const exportDir = projectDir + '/' + projectName + '_导出';
+    const htmlFilePath = exportDir + '/' + projectName + '.html';
+
+    await storageService.writeFile(htmlFilePath, html);
+
+    alert('✅ 导出成功！\n\n导出位置:\n' + exportDir + '\n\n文件可以直接双击运行，无需任何依赖！');
   } catch (error) {
     console.error('Failed to export:', error);
-    alert('导出失败: ' + (error instanceof Error ? error.message : '未知错误'));
+    alert('❌ 导出失败: ' + (error instanceof Error ? error.message : '未知错误'));
   }
-}
-
-function handleProjectSettingsSave(settings: any) {
-  // Apply project settings
-  if (projectStore.project) {
-    projectStore.project.name = settings.name;
-    projectStore.project.settings = {
-      ...projectStore.project.settings,
-      gridEnabled: settings.gridEnabled,
-      gridSize: settings.gridSize,
-      snapToGrid: settings.snapToGrid,
-      autosave: settings.autosave,
-      autosaveInterval: settings.autosaveInterval
-    };
-  }
-  showProjectSettings.value = false;
-}
-
-function handleAppSettingsSave(settings: any) {
-  // Apply app settings
-  localStorage.setItem('norp-app-settings', JSON.stringify(settings));
-  showAppSettings.value = false;
 }
 </script>
+
+<style scoped>
+</style>

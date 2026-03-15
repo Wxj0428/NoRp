@@ -21,6 +21,7 @@ export const useProjectStore = defineStore('project', () => {
     const newProject: Project = {
       id: generateId(),
       name,
+      path: undefined, // 新建项目没有路径
       createdAt: new Date(),
       modifiedAt: new Date(),
       pages: [

@@ -40,6 +40,7 @@ export interface AIService {
 export interface Project {
   id: string;
   name: string;
+  path?: string; // 项目文件路径（可选，新建项目时为空）
   createdAt: Date;
   modifiedAt: Date;
   pages: Page[];

@@ -13,7 +13,11 @@ export default defineConfig({
         entry: 'electron/main.ts',
         vite: {
           build: {
-            outDir: 'dist-electron',
+            lib: {
+              entry: 'electron/main.ts',
+              formats: ['cjs'],
+              fileName: 'main'
+            },
             rollupOptions: {
               external: ['electron']
             }
@@ -42,7 +46,6 @@ export default defineConfig({
     outDir: 'dist',
     emptyOutDir: true
   },
-  // 清除缓存
   optimizeDeps: {
     exclude: ['electron']
   }
