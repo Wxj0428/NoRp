@@ -29,7 +29,17 @@ export const useProjectStore = defineStore('project', () => {
           id: generateId(),
           name: 'Page 1',
           html: '<!-- Drag components here -->',
-          styles: {}
+          styles: {},
+          description: `这是项目的首页。
+
+💡 设计建议：
+- 这是用户看到的第一印象
+- 突出核心价值和功能
+- 提供清晰的导航
+- 保持简洁美观
+
+📝 设计思路：
+- 在这里记录首页的设计思路...`
         }
       ],
       assets: [],
@@ -61,7 +71,16 @@ export const useProjectStore = defineStore('project', () => {
       id: generateId(),
       name,
       html: '<!-- Drag components here -->',
-      styles: {}
+      styles: {},
+      description: `这是一个新创建的页面。
+
+💡 设计建议：
+- 明确页面的主要功能和目标用户
+- 考虑用户的交互流程和体验
+- 保持简洁，突出重点内容
+- 注意配色方案和视觉层次
+
+📝 在这里记录你的设计思路...`
     };
 
     project.value.pages.push(newPage);
@@ -104,6 +123,12 @@ export const useProjectStore = defineStore('project', () => {
     }
   }
 
+  function updatePageDescription(description: string) {
+    if (!currentPage.value) return;
+    currentPage.value.description = description;
+    isDirty.value = true;
+  }
+
   function generateId(): string {
     return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   }
@@ -120,6 +145,7 @@ export const useProjectStore = defineStore('project', () => {
     deletePage,
     addAsset,
     loadProject,
-    markAsSaved
+    markAsSaved,
+    updatePageDescription
   }
 });

@@ -60,6 +60,15 @@
           class="hidden group-hover:flex items-center gap-1"
         >
           <button
+            @click.stop="openDescriptionModal(page)"
+            class="p-1 hover:bg-gray-600 rounded"
+            title="页面说明"
+          >
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </button>
+          <button
             @click.stop="duplicatePage(page)"
             class="p-1 hover:bg-gray-600 rounded"
             title="复制页面"
@@ -108,6 +117,15 @@
       @click="closeContextMenu"
     >
       <button
+        @click="openDescriptionModal(contextMenu.page)"
+        class="w-full px-3 py-2 text-left text-sm text-gray-300 hover:bg-gray-800 flex items-center gap-2"
+      >
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+        页面说明
+      </button>
+      <button
         @click="renamePage(contextMenu.page)"
         class="w-full px-3 py-2 text-left text-sm text-gray-300 hover:bg-gray-800 flex items-center gap-2"
       >
@@ -137,6 +155,74 @@
         删除页面
       </button>
     </div>
+
+    <!-- Description Modal -->
+    <div
+      v-if="descriptionModal.show"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+      @click.self="closeDescriptionModal"
+    >
+      <div class="bg-gray-800 rounded-lg shadow-xl w-[600px] max-h-[80vh] flex flex-col">
+        <!-- Header -->
+        <div class="p-4 border-b border-gray-700 flex items-center justify-between">
+          <h3 class="text-white font-semibold">📝 页面说明</h3>
+          <button
+            @click="closeDescriptionModal"
+            class="p-1 hover:bg-gray-700 rounded"
+            title="关闭"
+          >
+            <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Content -->
+        <div class="flex-1 overflow-y-auto p-4">
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-300 mb-2">页面名称</label>
+            <div class="text-white text-lg">{{ descriptionModal.page?.name }}</div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-300 mb-2">设计思路说明</label>
+            <textarea
+              v-model="descriptionModal.content"
+              rows="15"
+              placeholder="在这里记录页面的设计思路、功能说明、交互逻辑等..."
+              class="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm resize-none focus:outline-none focus:border-blue-500"
+            ></textarea>
+          </div>
+
+          <div class="mt-4 p-3 bg-gray-900 rounded border border-gray-700">
+            <div class="text-xs text-gray-400 mb-2">💡 提示：可以记录以下内容</div>
+            <ul class="text-xs text-gray-500 space-y-1">
+              <li>• 页面的主要功能和目标用户</li>
+              <li>• 设计思路和视觉风格</li>
+              <li>• 用户交互流程和体验设计</li>
+              <li>• 需要注意的技术细节</li>
+              <li>• 待优化或待实现的功能</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="p-4 border-t border-gray-700 flex justify-end gap-2">
+          <button
+            @click="closeDescriptionModal"
+            class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded transition"
+          >
+            取消
+          </button>
+          <button
+            @click="saveDescription"
+            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition"
+          >
+            保存说明
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -157,6 +243,12 @@ const contextMenu = ref({
   y: 0,
   page: null as Page | null,
   index: -1
+});
+
+const descriptionModal = ref({
+  show: false,
+  page: null as Page | null,
+  content: ''
 });
 
 const pages = computed(() => projectStore.pageList);
@@ -236,6 +328,26 @@ function showContextMenu(event: MouseEvent, page: Page, index: number) {
 
 function closeContextMenu() {
   contextMenu.value.show = false;
+}
+
+// Description modal functions
+function openDescriptionModal(page: Page) {
+  descriptionModal.value = {
+    show: true,
+    page,
+    content: page.description || ''
+  };
+}
+
+function closeDescriptionModal() {
+  descriptionModal.value.show = false;
+}
+
+function saveDescription() {
+  if (descriptionModal.value.page) {
+    projectStore.updatePageDescription(descriptionModal.value.content);
+    closeDescriptionModal();
+  }
 }
 
 // Close context menu on click outside

@@ -54,6 +54,7 @@ export interface Page {
   html: string;
   styles: Record<string, CSSStyleDeclaration>;
   scripts?: string;
+  description?: string; // 页面设计思路说明
 }
 
 export interface Asset {
