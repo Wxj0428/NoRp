@@ -80,7 +80,7 @@
           v-model="inputMessage"
           @keydown.enter.exact.prevent="sendMessage"
           rows="3"
-          placeholder="让 AI 生成或修改 UI..."
+          placeholder="描述你想要的页面，AI 会生成完整的页面..."
           class="flex-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm resize-none focus:outline-none focus:border-blue-500"
         ></textarea>
         <button
@@ -134,16 +134,36 @@ const lastGeneratedCode = ref('');
 const streamingResponse = ref('');
 
 const examplePrompts = [
-  '创建登录表单',
-  '添加导航栏',
-  '生成卡片组件',
-  '创建数据表格',
-  '添加产品卡片',
-  '生成页面布局'
+  '生成一个用户登录页面，包含邮箱和密码输入框',
+  '创建一个数据表格页面，带分页功能',
+  '生成一个管理后台仪表板，包含侧边栏和统计卡片',
+  '创建一个产品展示页面，使用卡片网格布局',
+  '生成一个完整的注册表单，包含表单验证',
+  '创建一个响应式导航栏，带下拉菜单'
 ];
 
 onMounted(() => {
   aiStore.loadConfig();
+
+  // 添加欢迎消息
+  if (messages.value.length === 0) {
+    messages.value.push({
+      role: 'assistant',
+      content: `👋 欢迎使用 NoRp AI 设计助手！
+
+我可以帮你快速生成完整的页面，包括：
+🎨 登录/注册页面
+📊 数据表格和仪表板
+🛒 产品展示页面
+📝 各种表单和组件
+
+使用方法：
+1. 描述你想要的页面（越详细越好）
+2. 点击"插入到画布"将生成的页面添加到项目
+
+试试下面的提示词，或者直接告诉我你的需求！`
+    });
+  }
 });
 
 function useExamplePrompt(prompt: string) {
@@ -154,7 +174,7 @@ async function sendMessage() {
   const message = inputMessage.value.trim();
   if (!message || isLoading.value) return;
 
-  // Add user message
+  // 添加用户消息
   messages.value.push({
     role: 'user',
     content: message
@@ -167,7 +187,7 @@ async function sendMessage() {
   isLoading.value = true;
   streamingResponse.value = '';
 
-  // Add placeholder for assistant response
+  // 添加助手回复占位符
   const assistantMessageIndex = messages.value.length;
   messages.value.push({
     role: 'assistant',
@@ -175,6 +195,24 @@ async function sendMessage() {
   });
 
   try {
+    // 构建增强的提示词，引导 AI 生成完整页面
+    const enhancedPrompt = `${message}
+
+请生成一个完整的 HTML 页面，包含：
+- 完整的页面结构（使用语义化 HTML）
+- 所有样式都内联在 style 属性中
+- 现代化的设计风格（阴影、圆角、渐变、动画）
+- 响应式布局
+- 适当的交互效果（hover、focus 等）
+
+输出格式：使用 \`\`\`html 包裹完整的 HTML 代码`;
+
+    // 创建增强的消息数组
+    const enhancedMessages = [
+      { role: 'system', content: '你是一位专业的前端开发工程师和 UI 设计师。请生成完整、美观、可直接使用的 HTML 页面。所有样式必须内联在 style 属性中。不要使用任何外部依赖。' },
+      ...messages.value.slice(-10), // 只包含最近10条消息作为上下文
+      { role: 'user', content: enhancedPrompt }
+    ];
     // Check if AI is configured
     if ((aiStore.config.provider !== 'local' && !aiStore.config.apiKey) ||
         (aiStore.config.provider === 'local' && !aiStore.config.baseURL)) {
@@ -197,7 +235,7 @@ async function sendMessage() {
 
     // Use streaming chat
     let fullResponse = '';
-    for await (const chunk of aiService.chat([...messages.value])) {
+    for await (const chunk of aiService.chat(enhancedMessages)) {
       fullResponse += chunk;
       streamingResponse.value = fullResponse;
       messages.value[assistantMessageIndex].content = fullResponse;
@@ -211,6 +249,32 @@ async function sendMessage() {
     const codeMatch = fullResponse.match(/```html\n([\s\S]*?)\n```/);
     if (codeMatch) {
       lastGeneratedCode.value = codeMatch[1];
+    } else {
+      // 如果没有代码块标记，尝试提取 HTML 内容
+      const htmlMatch = fullResponse.match(/<html[\s\S]*?<\/html>/);
+      if (htmlMatch) {
+        lastGeneratedCode.value = htmlMatch[0];
+      }
+      // 或者查找任何以 < 开头的 HTML 代码
+      else {
+        const lines = fullResponse.split('\n');
+        const htmlLines: string[] = [];
+        let inHtmlBlock = false;
+        for (const line of lines) {
+          if (line.trim().startsWith('<') && line.includes('>')) {
+            inHtmlBlock = true;
+          }
+          if (inHtmlBlock) {
+            htmlLines.push(line);
+          }
+          if (inHtmlBlock && line.trim().endsWith('</')) {
+            inHtmlBlock = false;
+          }
+        }
+        if (htmlLines.length > 0) {
+          lastGeneratedCode.value = htmlLines.join('\n');
+        }
+      }
     }
 
     isLoading.value = false;
@@ -223,23 +287,26 @@ async function sendMessage() {
 }
 
 function insertCode() {
-  if (lastGeneratedCode.value) {
-    // Create a temporary element to parse the HTML
-    const tempDiv = document.createElement('div');
-    tempDiv.innerHTML = lastGeneratedCode.value;
+  if (!lastGeneratedCode.value) {
+    messages.value.push({
+      role: 'assistant',
+      content: '❌ 没有可插入的代码。请先生成代码。'
+    });
+    return;
+  }
 
-    // Emit event to editor to insert the code
-    // For now, use the editor store
+  try {
+    // 设置待插入的 HTML
     editorStore.setPendingInsert(lastGeneratedCode.value);
 
     messages.value.push({
       role: 'assistant',
-      content: '✅ 代码已准备插入到画布。点击画布上的位置来放置组件。'
+      content: '✅ 代码已成功插入到画布！\n\n你可以：\n• 在画布上查看生成的组件\n• 拖拽调整组件位置\n• 在右侧属性面板编辑样式'
     });
-  } else {
+  } catch (error) {
     messages.value.push({
       role: 'assistant',
-      content: '❌ 没有可插入的代码。请先生成代码。'
+      content: `❌ 插入失败：${error instanceof Error ? error.message : '未知错误'}`
     });
   }
 }

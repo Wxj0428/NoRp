@@ -275,6 +275,17 @@ watch(
   { deep: true }
 );
 
+// Watch for pending insert from AI
+watch(
+  () => editorStore.pendingInsert,
+  (html) => {
+    if (html && canvasFrame.value?.contentDocument) {
+      insertHTMLToCanvas(html);
+      editorStore.clearPendingInsert();
+    }
+  }
+);
+
 function updateCanvasContent() {
   if (!canvasFrame.value?.contentDocument) return;
 
@@ -582,6 +593,45 @@ function handleDeleteEvent(e: any) {
   editorStore.selectElement(null);
 
   console.log('Element deleted via property panel');
+}
+
+function insertHTMLToCanvas(html: string) {
+  const doc = canvasFrame.value?.contentDocument;
+  if (!doc || !projectStore.currentPage) return;
+
+  // 创建临时元素解析 HTML
+  const tempDiv = doc.createElement('div');
+  tempDiv.innerHTML = html;
+
+  // 获取容器
+  const container = doc.querySelector('.page-container');
+  if (!container) return;
+
+  // 提取所有顶级元素并添加到画布
+  const children = Array.from(tempDiv.children);
+  if (children.length === 0) {
+    // 如果没有子元素，尝试直接插入 HTML 字符串
+    container.insertAdjacentHTML('beforeend', html);
+  } else {
+    // 逐个添加子元素
+    children.forEach(child => {
+      // 为每个元素添加唯一 ID
+      if (!child.getAttribute('data-element-id')) {
+        child.setAttribute('data-element-id', Date.now().toString() + Math.random().toString(36).substr(2, 9));
+      }
+      container.appendChild(child);
+    });
+  }
+
+  // 更新项目 HTML
+  projectStore.updatePageHtml(container.innerHTML);
+
+  // 重新附加事件处理器
+  setTimeout(() => {
+    attachDropHandlers(container);
+  }, 50);
+
+  console.log('HTML inserted to canvas:', html.substring(0, 100));
 }
 
 function handleKeyDown(e: KeyboardEvent) {
