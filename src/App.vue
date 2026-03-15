@@ -120,7 +120,18 @@
     </footer>
 
     <!-- AI Panel (Floating) -->
-    <ChatPanel v-if="showAIPanel" class="fixed bottom-12 right-4 w-96 h-[600px]"></ChatPanel>
+    <ChatPanel
+      v-if="showAIPanel"
+      @close="showAIPanel = false"
+      @openSettings="showAISettings = true"
+      class="fixed bottom-16 right-4 w-96 max-h-[70vh]"
+    ></ChatPanel>
+
+    <!-- AI Settings Modal -->
+    <AISettings
+      v-if="showAISettings"
+      @close="showAISettings = false"
+    ></AISettings>
 
     <!-- Toggle AI Panel Button -->
     <button
@@ -141,6 +152,7 @@ import LayerTree from './components/Editor/LayerTree.vue';
 import PageList from './components/Editor/PageList.vue';
 import ComponentPalette from './components/ComponentLibrary/ComponentPalette.vue';
 import ChatPanel from './components/AIPanel/ChatPanel.vue';
+import AISettings from './components/AIPanel/AISettings.vue';
 import { useProjectStore } from './stores/project';
 import { useEditorStore } from './stores/editor';
 import { storageService } from './services/storage';
@@ -150,6 +162,7 @@ const projectStore = useProjectStore();
 const editorStore = useEditorStore();
 
 const showAIPanel = ref(false);
+const showAISettings = ref(false);
 const isElectron = ref(false);
 const projectPath = ref<string | null>(null);
 const workspacePath = ref<string | null>(null);
@@ -182,6 +195,38 @@ onMounted(() => {
   if (isElectron.value && !workspacePath.value) {
     // 可选：首次启动时提示设置工作区
     // setupWorkspaceDirectory();
+  }
+
+  // 监听 Electron 菜单事件
+  if (isElectron.value) {
+    const electronAPI = (window as any).electronAPI;
+
+    // 监听所有菜单事件
+    electronAPI?.onMenuEvent?.((event: string, ...args: any[]) => {
+      console.log('Menu event received:', event);
+
+      switch (event) {
+        case 'menu:ai-settings':
+          console.log('Opening AI settings');
+          showAIPanel.value = true;
+          showAISettings.value = true;
+          break;
+        case 'menu:new-project':
+          console.log('New project from menu');
+          newProject();
+          break;
+        case 'menu:save':
+          console.log('Save from menu');
+          saveProject();
+          break;
+        case 'menu:export':
+          console.log('Export from menu');
+          exportHtml();
+          break;
+        default:
+          console.log('Unhandled menu event:', event);
+      }
+    });
   }
 });
 
@@ -422,6 +467,12 @@ async function exportHtml() {
     console.error('Failed to export:', error);
     alert('❌ 导出失败: ' + (error instanceof Error ? error.message : '未知错误'));
   }
+}
+
+function openAISettings() {
+  showAIPanel.value = true;
+  showAISettings.value = true;
+  console.log('Opening AI settings');
 }
 </script>
 
