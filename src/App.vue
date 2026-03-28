@@ -121,7 +121,7 @@
 
     <!-- AI Panel (Floating) -->
     <ChatPanel
-      v-if="showAIPanel"
+      v-show="showAIPanel"
       @close="showAIPanel = false"
       @openSettings="showAISettings = true"
       class="fixed bottom-16 right-4 w-96 max-h-[70vh]"

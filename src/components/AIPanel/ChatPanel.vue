@@ -162,7 +162,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick, onMounted } from 'vue';
+import { ref, computed, nextTick, onMounted } from 'vue';
 import { useAIStore } from '@/stores/ai';
 import { useEditorStore } from '@/stores/editor';
 import { createAIService } from '@/services/ai';
@@ -176,7 +176,7 @@ defineEmits<{
 const aiStore = useAIStore();
 const editorStore = useEditorStore();
 
-const messages = ref<ChatMessage[]>([]);
+const messages = computed(() => aiStore.messages);
 const inputMessage = ref('');
 const messagesContainer = ref<HTMLElement>();
 const isLoading = ref(false);
@@ -235,8 +235,8 @@ onMounted(() => {
   aiStore.loadConfig();
 
   // 添加欢迎消息
-  if (messages.value.length === 0) {
-    messages.value.push({
+  if (aiStore.messages.length === 0) {
+    aiStore.addMessage({
       role: 'assistant',
       content: `👋 欢迎使用 NoRp AI 设计助手！
 
@@ -277,11 +277,10 @@ async function sendMessage() {
   if (!message || isLoading.value) return;
 
   // 添加用户消息
-  messages.value.push({
+  aiStore.addMessage({
     role: 'user',
     content: message
   });
-  aiStore.addMessage({ role: 'user', content: message });
 
   inputMessage.value = '';
   await scrollToBottom();
@@ -290,8 +289,8 @@ async function sendMessage() {
   streamingResponse.value = '';
 
   // 添加助手回复占位符
-  const assistantMessageIndex = messages.value.length;
-  messages.value.push({
+  const assistantMessageIndex = aiStore.messages.length;
+  aiStore.addMessage({
     role: 'assistant',
     content: ''
   });
@@ -312,13 +311,13 @@ async function sendMessage() {
     // 创建增强的消息数组
     const enhancedMessages: ChatMessage[] = [
       { role: 'system', content: '你是一位专业的前端开发工程师和 UI 设计师。请生成完整、美观、可直接使用的 HTML 页面。所有样式必须内联在 style 属性中。不要使用任何外部依赖。' },
-      ...messages.value.slice(-10), // 只包含最近10条消息作为上下文
+      ...aiStore.messages.slice(-10), // 只包含最近10条消息作为上下文
       { role: 'user', content: enhancedPrompt }
     ];
     // Check if AI is configured
     if ((aiStore.config.provider !== 'local' && !aiStore.config.apiKey) ||
         (aiStore.config.provider === 'local' && !aiStore.config.baseURL)) {
-      messages.value[assistantMessageIndex].content =
+      aiStore.messages[assistantMessageIndex].content =
         '请先配置 AI 设置。点击顶部的"AI 设置"按钮进行配置。';
       await scrollToBottom();
       isLoading.value = false;
@@ -340,12 +339,9 @@ async function sendMessage() {
     for await (const chunk of aiService.chat(enhancedMessages)) {
       fullResponse += chunk;
       streamingResponse.value = fullResponse;
-      messages.value[assistantMessageIndex].content = fullResponse;
+      aiStore.messages[assistantMessageIndex].content = fullResponse;
       await scrollToBottom();
     }
-
-    // Add to AI store
-    aiStore.addMessage({ role: 'assistant', content: fullResponse });
 
     // Extract code from response if present
     const codeMatch = fullResponse.match(/```html\n([\s\S]*?)\n```/);
@@ -381,7 +377,7 @@ async function sendMessage() {
 
     isLoading.value = false;
   } catch (error) {
-    messages.value[assistantMessageIndex].content =
+    aiStore.messages[assistantMessageIndex].content =
       `错误: ${error instanceof Error ? error.message : '未知错误'}`;
     aiStore.setError(error instanceof Error ? error.message : '未知错误');
     isLoading.value = false;
@@ -390,7 +386,7 @@ async function sendMessage() {
 
 function insertCode() {
   if (!lastGeneratedCode.value) {
-    messages.value.push({
+    aiStore.addMessage({
       role: 'assistant',
       content: '❌ 没有可插入的代码。\n\n💡 请先使用快速模板或描述需求来生成页面。'
     });
@@ -402,7 +398,7 @@ function insertCode() {
     // 设置待插入的 HTML
     editorStore.setPendingInsert(lastGeneratedCode.value);
 
-    messages.value.push({
+    aiStore.addMessage({
       role: 'assistant',
       content: `🎉 页面已成功插入到画布！
 
@@ -416,7 +412,7 @@ function insertCode() {
     });
     scrollToBottom();
   } catch (error) {
-    messages.value.push({
+    aiStore.addMessage({
       role: 'assistant',
       content: `❌ 插入失败：${error instanceof Error ? error.message : '未知错误'}\n\n请重试或检查生成的代码是否完整。`
     });
@@ -425,7 +421,6 @@ function insertCode() {
 }
 
 function clearChat() {
-  messages.value = [];
   lastGeneratedCode.value = '';
   aiStore.clearMessages();
 }
@@ -480,12 +475,13 @@ function getLanguage(part: { type: string; content: string; language?: string })
 function copyCode(code: string) {
   navigator.clipboard.writeText(code).then(() => {
     // Show a brief notification
-    messages.value.push({
+    const idx = aiStore.messages.length;
+    aiStore.addMessage({
       role: 'assistant',
       content: '✅ 代码已复制到剪贴板'
     });
     setTimeout(() => {
-      messages.value.pop();
+      aiStore.messages.splice(idx, 1);
       scrollToBottom();
     }, 2000);
   });
