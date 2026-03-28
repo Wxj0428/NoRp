@@ -35,6 +35,15 @@ export interface AIService {
   isConfigured(): boolean;
 }
 
+export interface Skill {
+  id: string;
+  name: string;
+  icon: string;
+  systemPrompt: string;
+  userPrompt?: string;
+  isDefault?: boolean;
+}
+
 // ============= Project Types =============
 
 export interface Project {

@@ -27,18 +27,29 @@
         </div>
       </div>
 
-      <!-- Quick Templates -->
+      <!-- Skills Grid -->
       <div class="mb-3">
-        <div class="text-xs text-gray-400 mb-2">🚀 快速模板</div>
-        <div class="grid grid-cols-2 gap-2">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs text-gray-400">🚀 Skills</span>
+          <span v-if="activeSkillId" class="text-xs text-blue-400">
+            已选: {{ activeSkill?.name }}
+          </span>
+        </div>
+        <div class="grid grid-cols-3 gap-1.5">
           <button
-            v-for="template in quickTemplates"
-            :key="template.id"
-            @click="useQuickTemplate(template)"
-            class="flex flex-col items-center gap-1 p-2 bg-gray-700 hover:bg-gray-600 rounded transition"
+            v-for="skill in aiStore.skills"
+            :key="skill.id"
+            @click="selectSkill(skill)"
+            :class="[
+              'flex flex-col items-center gap-0.5 p-1.5 rounded transition',
+              activeSkillId === skill.id
+                ? 'bg-blue-600 ring-1 ring-blue-400'
+                : 'bg-gray-700 hover:bg-gray-600'
+            ]"
+            :title="skill.name"
           >
-            <span class="text-2xl">{{ template.icon }}</span>
-            <span class="text-xs text-gray-300">{{ template.name }}</span>
+            <span class="text-xl">{{ skill.icon }}</span>
+            <span class="text-[10px] text-gray-300 truncate w-full text-center">{{ skill.name }}</span>
           </button>
         </div>
       </div>
@@ -124,7 +135,7 @@
           v-model="inputMessage"
           @keydown.enter.exact.prevent="sendMessage"
           rows="3"
-          placeholder="💡 提示：点击上方快速模板，或直接描述你想要的页面..."
+          placeholder="描述你想要的页面... (选择 Skill 可增强 AI 能力)"
           class="flex-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm resize-none focus:outline-none focus:border-blue-500"
         ></textarea>
         <button
@@ -166,7 +177,7 @@ import { ref, computed, nextTick, onMounted } from 'vue';
 import { useAIStore } from '@/stores/ai';
 import { useEditorStore } from '@/stores/editor';
 import { createAIService } from '@/services/ai';
-import type { ChatMessage } from '@/types';
+import type { ChatMessage, Skill } from '@/types';
 
 defineEmits<{
   close: []
@@ -183,44 +194,9 @@ const isLoading = ref(false);
 const lastGeneratedCode = ref('');
 const streamingResponse = ref('');
 
-const quickTemplates = [
-  {
-    id: 'login',
-    name: '登录页',
-    icon: '🔐',
-    prompt: '生成一个现代化的登录页面，包含：\n- 邮箱/用户名输入框\n- 密码输入框（带显示/隐藏功能）\n- "记住我"复选框\n- "忘记密码"链接\n- 登录按钮\n- 注册链接\n\n风格：简洁现代，使用渐变背景，卡片式布局，带有阴影和圆角'
-  },
-  {
-    id: 'dashboard',
-    name: '仪表板',
-    icon: '📊',
-    prompt: '生成一个完整的管理后台仪表板，包含：\n- 左侧导航栏（深色主题）\n- 顶部搜索栏和用户信息\n- 4个统计卡片（用户数、订单数、收入、访问量）\n- 图表展示区域\n- 最近活动列表\n\n风格：专业商务风格，使用蓝色为主色调，数据可视化清晰'
-  },
-  {
-    id: 'product-list',
-    name: '产品列表',
-    icon: '🛍️',
-    prompt: '生成一个电商产品列表页面，包含：\n- 顶部筛选栏（分类、价格、排序）\n- 12个产品卡片网格布局\n- 每个卡片包含：图片、标题、价格、购买按钮\n- 分页导航\n\n风格：电商风格，白色背景，产品卡片悬停效果，价格突出显示'
-  },
-  {
-    id: 'form',
-    name: '表单页',
-    icon: '📝',
-    prompt: '生成一个完整的联系表单页面，包含：\n- 姓名、邮箱、电话输入框\n- 下拉选择框（主题类型）\n- 多行文本域（详细内容）\n- 提交和重置按钮\n- 表单验证提示\n\n风格：简洁专业，使用绿色主色调，清晰的标签和提示文字'
-  },
-  {
-    id: 'landing',
-    name: '落地页',
-    icon: '🎯',
-    prompt: '生成一个产品营销落地页，包含：\n- 大标题和副标题首屏\n- 产品特点/优势区域（3-4个特点）\n- 产品截图展示区\n- 客户评价/案例\n- CTA按钮区域\n\n风格：营销导向，渐变色背景，大字体标题，强调视觉效果'
-  },
-  {
-    id: 'settings',
-    name: '设置页',
-    icon: '⚙️',
-    prompt: '生成一个用户设置页面，包含：\n- 左侧设置分类导航\n- 个人信息编辑表单\n- 密码修改区域\n- 通知偏好开关\n- 主题选择\n- 保存按钮\n\n风格：简洁实用，分组清晰，使用灰色调和蓝色强调色'
-  }
-];
+// Skill state
+const activeSkillId = computed(() => aiStore.activeSkillId);
+const activeSkill = computed(() => aiStore.getActiveSkill);
 
 const examplePrompts = [
   '生成一个用户登录页面，包含邮箱和密码输入框',
@@ -248,18 +224,13 @@ onMounted(() => {
 • 营销落地页
 • 数据表格
 
-🚀 三种使用方式：
-1. 点击顶部的快速模板，一键生成常用页面
+🚀 使用方式：
+1. 选择上方 Skill 增强 AI 能力（前端设计、响应式布局、表单设计、动效设计）
 2. 使用示例需求，快速了解功能
 3. 直接描述你想要的页面，我会为你生成
 
-💡 提示：描述越详细，生成的效果越好！可以指定：
-• 页面类型和功能
-• 颜色风格（如蓝色系、暗色主题）
-• 布局方式（如卡片网格、左右分栏）
-• 交互效果（如悬停动画）
-
-试试快速模板吧，或者直接告诉我你的需求！`
+💡 提示：Skill 是 AI 的能力增强，选择后 AI 会以对应专业视角生成页面
+⚙️ 在 AI 设置中可以管理你的 Skill（添加/删除自定义 Skill）`
     });
   }
 });
@@ -268,8 +239,12 @@ function useExamplePrompt(prompt: string) {
   inputMessage.value = prompt;
 }
 
-function useQuickTemplate(template: any) {
-  inputMessage.value = template.prompt;
+function selectSkill(skill: Skill) {
+  if (activeSkillId.value === skill.id) {
+    aiStore.setActiveSkill(null);
+  } else {
+    aiStore.setActiveSkill(skill.id);
+  }
 }
 
 async function sendMessage() {
@@ -308,12 +283,21 @@ async function sendMessage() {
 
 输出格式：使用 \`\`\`html 包裹完整的 HTML 代码`;
 
+    // 使用 skill 的 systemPrompt 或默认的
+    const systemContent = activeSkill.value
+      ? activeSkill.value.systemPrompt
+      : '你是一位专业的前端开发工程师和 UI 设计师。请生成完整、美观、可直接使用的 HTML 页面。所有样式必须内联在 style 属性中。不要使用任何外部依赖。';
+
     // 创建增强的消息数组
     const enhancedMessages: ChatMessage[] = [
-      { role: 'system', content: '你是一位专业的前端开发工程师和 UI 设计师。请生成完整、美观、可直接使用的 HTML 页面。所有样式必须内联在 style 属性中。不要使用任何外部依赖。' },
+      { role: 'system', content: systemContent },
       ...aiStore.messages.slice(-10), // 只包含最近10条消息作为上下文
       { role: 'user', content: enhancedPrompt }
     ];
+
+    // 发送后清除 skill 选中状态
+    aiStore.setActiveSkill(null);
+
     // Check if AI is configured
     if ((aiStore.config.provider !== 'local' && !aiStore.config.apiKey) ||
         (aiStore.config.provider === 'local' && !aiStore.config.baseURL)) {
@@ -326,13 +310,6 @@ async function sendMessage() {
 
     // Create AI service
     const aiService = createAIService(aiStore.config);
-
-    // Build context
-    // const _context = {
-    //   projectName: projectStore.project?.name || 'Untitled',
-    //   currentSelection: editorStore.selectedElementId,
-    //   conversationHistory: messages.value.slice(-10)
-    // };
 
     // Use streaming chat
     let fullResponse = '';
@@ -388,7 +365,7 @@ function insertCode() {
   if (!lastGeneratedCode.value) {
     aiStore.addMessage({
       role: 'assistant',
-      content: '❌ 没有可插入的代码。\n\n💡 请先使用快速模板或描述需求来生成页面。'
+      content: '❌ 没有可插入的代码。\n\n💡 请先使用 Skill 或描述需求来生成页面。'
     });
     scrollToBottom();
     return;

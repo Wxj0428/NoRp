@@ -117,6 +117,76 @@
           />
         </div>
 
+        <!-- Skills Management -->
+        <div class="border-t border-gray-700 pt-4">
+          <div class="flex items-center justify-between mb-3">
+            <label class="text-sm font-medium text-gray-300">Skills 管理</label>
+            <button
+              @click="showAddSkill = !showAddSkill"
+              class="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded transition"
+            >
+              {{ showAddSkill ? '收起' : '+ 添加 Skill' }}
+            </button>
+          </div>
+
+          <!-- Add Skill Form -->
+          <div v-if="showAddSkill" class="mb-3 p-3 bg-gray-900 rounded space-y-2">
+            <div class="flex gap-2">
+              <input
+                v-model="newSkill.icon"
+                placeholder="图标"
+                class="w-16 bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-white text-sm text-center focus:outline-none focus:border-blue-500"
+              />
+              <input
+                v-model="newSkill.name"
+                placeholder="Skill 名称"
+                class="flex-1 bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500"
+              />
+            </div>
+            <textarea
+              v-model="newSkill.systemPrompt"
+              placeholder="系统提示词 — 定义 AI 的专业知识和能力（这是 Skill 的核心，描述越详细 AI 表现越好）"
+              rows="5"
+              class="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-white text-sm resize-none focus:outline-none focus:border-blue-500"
+            ></textarea>
+            <button
+              @click="addSkill"
+              :disabled="!newSkill.name.trim() || !newSkill.systemPrompt.trim()"
+              class="w-full px-3 py-1.5 bg-green-600 hover:bg-green-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white text-sm rounded transition"
+            >
+              确认添加
+            </button>
+          </div>
+
+          <!-- Skills List -->
+          <div class="space-y-1.5">
+            <div
+              v-for="skill in aiStore.skills"
+              :key="skill.id"
+              class="flex items-center justify-between px-3 py-2 bg-gray-900 rounded"
+            >
+              <div class="flex items-center gap-2 min-w-0 flex-1">
+                <span class="text-lg">{{ skill.icon }}</span>
+                <div class="min-w-0">
+                  <div class="text-sm text-white truncate">{{ skill.name }}</div>
+                  <div class="text-xs text-gray-500 truncate">{{ skill.systemPrompt.substring(0, 60) }}...</div>
+                </div>
+              </div>
+              <button
+                v-if="!skill.isDefault"
+                @click="aiStore.deleteSkill(skill.id)"
+                class="ml-2 p-1 text-red-400 hover:text-red-300 hover:bg-gray-800 rounded transition flex-shrink-0"
+                title="删除"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+              <span v-else class="ml-2 text-xs text-gray-600 flex-shrink-0">内置</span>
+            </div>
+          </div>
+        </div>
+
         <!-- Status -->
         <div v-if="error" class="p-3 bg-red-900 bg-opacity-30 border border-red-700 rounded">
           <p class="text-sm text-red-300">{{ error }}</p>
@@ -192,6 +262,23 @@ const localConfig = ref<AIServiceConfig>({
 
 const showApiKey = ref(false);
 const error = ref<string | null>(null);
+
+// Skill state
+const showAddSkill = ref(false);
+const newSkill = ref({ name: '', icon: '🔧', systemPrompt: '' });
+
+function addSkill() {
+  if (!newSkill.value.name.trim() || !newSkill.value.systemPrompt.trim()) return;
+  aiStore.addSkill({
+    id: `skill-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    name: newSkill.value.name.trim(),
+    icon: newSkill.value.icon || '🔧',
+    systemPrompt: newSkill.value.systemPrompt.trim(),
+    isDefault: false
+  });
+  newSkill.value = { name: '', icon: '🔧', systemPrompt: '' };
+  showAddSkill.value = false;
+}
 
 onMounted(() => {
   aiStore.loadConfig();
