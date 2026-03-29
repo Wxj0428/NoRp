@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import type { HistoryAction, ElementData } from '../types';
+import type { HistoryAction, ElementData, AIActionType } from '../types';
 
 export const useEditorStore = defineStore('editor', () => {
   // State
@@ -11,6 +11,11 @@ export const useEditorStore = defineStore('editor', () => {
   const historyIndex = ref(-1);
   const clipboard = ref<ElementData | null>(null);
   const pendingInsert = ref<string | null>(null);
+  const pendingAction = ref<{ type: AIActionType; html: string; pageId?: string } | null>(null);
+
+  // Selected element serialization for AI context
+  const selectedElementHtml = ref<string | null>(null);
+  const selectedElementTag = ref<string | null>(null);
 
   // Canvas settings
   const zoom = ref(1);
@@ -26,6 +31,19 @@ export const useEditorStore = defineStore('editor', () => {
   // Actions
   function selectElement(element: HTMLElement | null) {
     selectedElement.value = element;
+  }
+
+  function updateSelectedElementInfo(element: HTMLElement | null) {
+    if (element) {
+      selectedElementHtml.value = element.outerHTML.substring(0, 4000);
+      const tag = element.tagName.toLowerCase();
+      const cls = element.className ? '.' + String(element.className).trim().split(/\s+/).join('.') : '';
+      const id = element.id ? '#' + element.id : '';
+      selectedElementTag.value = `${tag}${id}${cls}`;
+    } else {
+      selectedElementHtml.value = null;
+      selectedElementTag.value = null;
+    }
   }
 
   function hoverElement(element: HTMLElement | null) {
@@ -86,6 +104,14 @@ export const useEditorStore = defineStore('editor', () => {
     pendingInsert.value = null;
   }
 
+  function setPendingAction(type: AIActionType, html: string, pageId?: string) {
+    pendingAction.value = { type, html, pageId };
+  }
+
+  function clearPendingAction() {
+    pendingAction.value = null;
+  }
+
   function getSelectedElementId(): string | null {
     return selectedElementId.value;
   }
@@ -98,6 +124,9 @@ export const useEditorStore = defineStore('editor', () => {
     historyIndex,
     clipboard,
     pendingInsert,
+    pendingAction,
+    selectedElementHtml,
+    selectedElementTag,
     zoom,
     gridEnabled,
     gridSize,
@@ -106,6 +135,7 @@ export const useEditorStore = defineStore('editor', () => {
     canUndo,
     canRedo,
     selectElement,
+    updateSelectedElementInfo,
     hoverElement,
     pushHistory,
     undo,
@@ -118,6 +148,8 @@ export const useEditorStore = defineStore('editor', () => {
     clearHistory,
     setPendingInsert,
     clearPendingInsert,
+    setPendingAction,
+    clearPendingAction,
     getSelectedElementId
   }
 });

@@ -44,6 +44,16 @@ export interface Skill {
   isDefault?: boolean;
 }
 
+export interface PageContext {
+  pageName: string;
+  pageDescription?: string;
+  pageHtml: string;
+  selectedElementHtml?: string;
+  selectedElementTag?: string;
+}
+
+export type AIActionType = 'replace-page' | 'modify-selected' | 'append';
+
 // ============= Project Types =============
 
 export interface Project {

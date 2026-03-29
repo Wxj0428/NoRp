@@ -176,8 +176,9 @@
 import { ref, computed, nextTick, onMounted } from 'vue';
 import { useAIStore } from '@/stores/ai';
 import { useEditorStore } from '@/stores/editor';
+import { useProjectStore } from '@/stores/project';
 import { createAIService } from '@/services/ai';
-import type { ChatMessage, Skill } from '@/types';
+import type { ChatMessage, Skill, AIActionType } from '@/types';
 
 defineEmits<{
   close: []
@@ -186,6 +187,7 @@ defineEmits<{
 
 const aiStore = useAIStore();
 const editorStore = useEditorStore();
+const projectStore = useProjectStore();
 
 const messages = computed(() => aiStore.messages);
 const inputMessage = ref('');
@@ -284,9 +286,40 @@ async function sendMessage() {
 输出格式：使用 \`\`\`html 包裹完整的 HTML 代码`;
 
     // 使用 skill 的 systemPrompt 或默认的
-    const systemContent = activeSkill.value
+    let systemContent = activeSkill.value
       ? activeSkill.value.systemPrompt
       : '你是一位专业的前端开发工程师和 UI 设计师。请生成完整、美观、可直接使用的 HTML 页面。所有样式必须内联在 style 属性中。不要使用任何外部依赖。';
+
+    // 注入页面上下文
+    const currentPage = projectStore.currentPage;
+    if (currentPage) {
+      const contextParts: string[] = [
+        '\n\n## 当前页面上下文',
+        `- 页面名称: ${currentPage.name}`,
+      ];
+
+      if (currentPage.description) {
+        contextParts.push(`- 页面描述: ${currentPage.description}`);
+      }
+
+      if (currentPage.html) {
+        const truncatedHtml = currentPage.html.length > 8000
+          ? currentPage.html.substring(0, 8000) + '\n<!-- [...已截断...] -->'
+          : currentPage.html;
+        contextParts.push(`\n### 当前页面 HTML:\n\`\`\`html\n${truncatedHtml}\n\`\`\``);
+      }
+
+      if (editorStore.selectedElementHtml) {
+        const selectedHtml = editorStore.selectedElementHtml.length > 2000
+          ? editorStore.selectedElementHtml.substring(0, 2000) + '\n<!-- [...已截断...] -->'
+          : editorStore.selectedElementHtml;
+        contextParts.push(`\n### 当前选中元素 (${editorStore.selectedElementTag || 'unknown'}):\n\`\`\`html\n${selectedHtml}\n\`\`\``);
+      }
+
+      contextParts.push(`\n## 响应操作\n生成 HTML 时，在代码开头用注释标记操作类型：\n- 替换整个页面: <!-- ACTION:REPLACE_PAGE -->\n- 修改选中元素: <!-- ACTION:MODIFY_SELECTED -->（HTML 将替换当前选中的元素）\n- 追加新内容: <!-- ACTION:APPEND -->（默认，追加到页面末尾）\n\n当用户要求修改已有元素时，使用 MODIFY_SELECTED。\n当用户要求全新设计时，使用 REPLACE_PAGE。\n当用户要求添加新部分时，使用 APPEND。`);
+
+      systemContent += contextParts.join('\n');
+    }
 
     // 创建增强的消息数组
     const enhancedMessages: ChatMessage[] = [
@@ -320,36 +353,24 @@ async function sendMessage() {
       await scrollToBottom();
     }
 
-    // Extract code from response if present
-    const codeMatch = fullResponse.match(/```html\n([\s\S]*?)\n```/);
-    if (codeMatch) {
-      lastGeneratedCode.value = codeMatch[1];
-    } else {
-      // 如果没有代码块标记，尝试提取 HTML 内容
-      const htmlMatch = fullResponse.match(/<html[\s\S]*?<\/html>/);
-      if (htmlMatch) {
-        lastGeneratedCode.value = htmlMatch[0];
-      }
-      // 或者查找任何以 < 开头的 HTML 代码
-      else {
-        const lines = fullResponse.split('\n');
-        const htmlLines: string[] = [];
-        let inHtmlBlock = false;
-        for (const line of lines) {
-          if (line.trim().startsWith('<') && line.includes('>')) {
-            inHtmlBlock = true;
-          }
-          if (inHtmlBlock) {
-            htmlLines.push(line);
-          }
-          if (inHtmlBlock && line.trim().endsWith('</')) {
-            inHtmlBlock = false;
-          }
-        }
-        if (htmlLines.length > 0) {
-          lastGeneratedCode.value = htmlLines.join('\n');
-        }
-      }
+    // Auto-extract and apply code to canvas
+    const extractedHtml = extractHtmlFromResponse(fullResponse);
+    if (extractedHtml) {
+      lastGeneratedCode.value = extractedHtml;
+      const { action, html } = parseAIAction(extractedHtml);
+      editorStore.setPendingAction(action, html);
+
+      const actionLabels: Record<string, string> = {
+        'replace-page': '替换页面',
+        'modify-selected': '修改选中元素',
+        'append': '追加内容'
+      };
+
+      aiStore.addMessage({
+        role: 'assistant',
+        content: `已自动应用到画布（${actionLabels[action] || '追加'}）。\n继续对话可以迭代优化页面。`
+      });
+      await scrollToBottom();
     }
 
     isLoading.value = false;
@@ -359,6 +380,17 @@ async function sendMessage() {
     aiStore.setError(error instanceof Error ? error.message : '未知错误');
     isLoading.value = false;
   }
+}
+
+function parseAIAction(html: string): { action: AIActionType; html: string } {
+  const trimmed = html.trim();
+  if (trimmed.startsWith('<!-- ACTION:REPLACE_PAGE -->')) {
+    return { action: 'replace-page', html: trimmed.replace('<!-- ACTION:REPLACE_PAGE -->', '').trim() };
+  }
+  if (trimmed.startsWith('<!-- ACTION:MODIFY_SELECTED -->')) {
+    return { action: 'modify-selected', html: trimmed.replace('<!-- ACTION:MODIFY_SELECTED -->', '').trim() };
+  }
+  return { action: 'append', html: trimmed };
 }
 
 function insertCode() {
@@ -372,12 +404,20 @@ function insertCode() {
   }
 
   try {
-    // 设置待插入的 HTML
-    editorStore.setPendingInsert(lastGeneratedCode.value);
+    const { action, html } = parseAIAction(lastGeneratedCode.value);
+
+    // 使用新的 pendingAction 机制
+    editorStore.setPendingAction(action, html);
+
+    const actionLabels: Record<string, string> = {
+      'replace-page': '替换整个页面',
+      'modify-selected': '修改选中元素',
+      'append': '追加到页面'
+    };
 
     aiStore.addMessage({
       role: 'assistant',
-      content: `🎉 页面已成功插入到画布！
+      content: `🎉 页面已成功插入到画布！操作：${actionLabels[action] || '追加'}
 
 ✨ 接下来你可以：
 • 在画布上查看和选择元素

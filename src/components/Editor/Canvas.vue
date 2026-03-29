@@ -286,6 +286,102 @@ watch(
   }
 );
 
+// Extract body content from a full HTML document, or return as-is
+function extractBodyContent(html: string): string {
+  const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+  if (bodyMatch) return bodyMatch[1].trim();
+  // If no <body> tag, check if it has <html> wrapper
+  if (/<html/i.test(html) && !/<body/i.test(html)) {
+    // Full HTML doc without body — just strip html/head tags
+    return html.replace(/<\/?html[^>]*>/gi, '').replace(/<head[\s\S]*?<\/head>/gi, '').trim();
+  }
+  return html;
+}
+
+// Apply HTML to a specific page (current page goes to canvas, others go to store)
+function applyHtmlToPage(pageId: string, html: string) {
+  const content = extractBodyContent(html);
+
+  if (pageId === projectStore.currentPageId) {
+    // Apply to current canvas
+    const doc = canvasFrame.value?.contentDocument;
+    const container = doc?.querySelector('.page-container');
+    if (container) {
+      container.innerHTML = content;
+      projectStore.updatePageHtml(container.innerHTML);
+      attachDropHandlers(container);
+    }
+  } else {
+    // Update non-current page directly in store
+    const page = projectStore.pageList.find(p => p.id === pageId);
+    if (page) {
+      page.html = content;
+      projectStore.isDirty = true;
+    }
+  }
+}
+
+// Watch for pending action (replace/modify/append from AI)
+watch(
+  () => editorStore.pendingAction,
+  (action) => {
+    if (!action) return;
+
+    const targetPageId = action.pageId || projectStore.currentPageId;
+
+    // If action targets a non-current page, just update the store
+    if (targetPageId !== projectStore.currentPageId) {
+      const content = extractBodyContent(action.html);
+      const page = projectStore.pageList.find(p => p.id === targetPageId);
+      if (page) {
+        page.html = content;
+        projectStore.isDirty = true;
+      }
+      editorStore.clearPendingAction();
+      return;
+    }
+
+    // Current page — apply to canvas
+    if (!canvasFrame.value?.contentDocument) return;
+    const doc = canvasFrame.value.contentDocument;
+    const container = doc.querySelector('.page-container');
+    if (!container) return;
+
+    switch (action.type) {
+      case 'replace-page':
+        container.innerHTML = extractBodyContent(action.html);
+        break;
+
+      case 'modify-selected': {
+        const selected = editorStore.selectedElement;
+        if (selected && selected.parentNode) {
+          const tempDiv = doc.createElement('div');
+          tempDiv.innerHTML = action.html;
+          const newEl = tempDiv.firstElementChild;
+          if (newEl) {
+            selected.parentNode.replaceChild(newEl, selected);
+            editorStore.selectElement(newEl as HTMLElement);
+            editorStore.updateSelectedElementInfo(newEl as HTMLElement);
+          }
+        } else {
+          container.insertAdjacentHTML('beforeend', action.html);
+        }
+        break;
+      }
+
+      case 'append':
+      default:
+        insertHTMLToCanvas(action.html);
+        break;
+    }
+
+    projectStore.updatePageHtml(container.innerHTML);
+    editorStore.clearPendingAction();
+    attachDropHandlers(container);
+  },
+  { flush: 'sync' }
+);
+
 function updateCanvasContent() {
   if (!canvasFrame.value?.contentDocument) return;
 
@@ -375,10 +471,12 @@ function handleElementClick(e: MouseEvent) {
 
   if (target === canvasFrame.value?.contentDocument?.body) {
     editorStore.selectElement(null);
+    editorStore.updateSelectedElementInfo(null);
     return;
   }
 
   editorStore.selectElement(target);
+  editorStore.updateSelectedElementInfo(target);
 }
 
 // 元素拖拽功能
