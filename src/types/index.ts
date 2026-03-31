@@ -1,9 +1,50 @@
 // ============= AI Service Types =============
 
 export interface ChatMessage {
-  role: 'user' | 'assistant' | 'system';
+  role: 'user' | 'assistant' | 'system' | 'tool';
   content: string;
+  toolCalls?: ToolCall[];
+  toolCallId?: string;
 }
+
+// ============= Tool Calling Types =============
+
+export interface ToolParameterSchema {
+  type: string;
+  description?: string;
+  enum?: string[];
+  items?: ToolParameterSchema;
+}
+
+export interface ToolInputSchema {
+  type: 'object';
+  properties: Record<string, ToolParameterSchema>;
+  required?: string[];
+}
+
+export interface ToolDefinition {
+  name: string;
+  description: string;
+  inputSchema: ToolInputSchema;
+}
+
+export interface ToolCall {
+  id: string;
+  name: string;
+  arguments: Record<string, any>;
+}
+
+export interface ToolResult {
+  toolCallId: string;
+  content: string;
+  isError?: boolean;
+}
+
+export type AgentStreamEvent =
+  | { type: 'text'; content: string }
+  | { type: 'tool_call'; toolCall: ToolCall }
+  | { type: 'tool_result'; toolResult: ToolResult }
+  | { type: 'done'; stopReason: 'end_turn' | 'tool_use' | 'max_tokens' };
 
 export interface ProjectContext {
   projectName: string;
@@ -26,12 +67,15 @@ export interface AIServiceConfig {
   model?: string;
   temperature?: number;
   maxTokens?: number;
+  enableToolCalling?: boolean;
+  maxAgentIterations?: number;
 }
 
 export interface AIService {
   name: string;
   generateCode(prompt: string, context: ProjectContext): Promise<GeneratedCode>;
   chat(messages: ChatMessage[]): AsyncGenerator<string>;
+  chatWithTools(messages: ChatMessage[], tools: ToolDefinition[]): AsyncGenerator<AgentStreamEvent>;
   isConfigured(): boolean;
 }
 

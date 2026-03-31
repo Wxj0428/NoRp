@@ -122,8 +122,18 @@
               <div class="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
               <div class="w-2 h-2 bg-blue-400 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
             </div>
-            <span class="text-xs text-gray-400">AI 正在生成页面...</span>
+            <span v-if="aiStore.isAgentRunning" class="text-xs text-gray-400">
+              Agent 迭代 {{ aiStore.agentIterations }}/{{ aiStore.config.maxAgentIterations || 10 }}...
+            </span>
+            <span v-else class="text-xs text-gray-400">AI 正在生成页面...</span>
           </div>
+          <button
+            v-if="aiStore.isAgentRunning"
+            @click="cancelAgent"
+            class="mt-2 text-xs text-red-400 hover:text-red-300 underline"
+          >
+            取消
+          </button>
         </div>
       </div>
     </div>
@@ -178,6 +188,10 @@ import { useAIStore } from '@/stores/ai';
 import { useEditorStore } from '@/stores/editor';
 import { useProjectStore } from '@/stores/project';
 import { createAIService } from '@/services/ai';
+import { Agent } from '@/services/ai/agent';
+import { ToolExecutor } from '@/services/ai/tools/executor';
+import { ALL_TOOLS } from '@/services/ai/tools';
+import { PromptBuilder } from '@/services/ai/prompt-builder';
 import type { ChatMessage, Skill, AIActionType } from '@/types';
 
 defineEmits<{
@@ -273,61 +287,6 @@ async function sendMessage() {
   });
 
   try {
-    // 构建增强的提示词，引导 AI 生成完整页面
-    const enhancedPrompt = `${message}
-
-请生成一个完整的 HTML 页面，包含：
-- 完整的页面结构（使用语义化 HTML）
-- 所有样式都内联在 style 属性中
-- 现代化的设计风格（阴影、圆角、渐变、动画）
-- 响应式布局
-- 适当的交互效果（hover、focus 等）
-
-输出格式：使用 \`\`\`html 包裹完整的 HTML 代码`;
-
-    // 使用 skill 的 systemPrompt 或默认的
-    let systemContent = activeSkill.value
-      ? activeSkill.value.systemPrompt
-      : '你是一位专业的前端开发工程师和 UI 设计师。请生成完整、美观、可直接使用的 HTML 页面。所有样式必须内联在 style 属性中。不要使用任何外部依赖。';
-
-    // 注入页面上下文
-    const currentPage = projectStore.currentPage;
-    if (currentPage) {
-      const contextParts: string[] = [
-        '\n\n## 当前页面上下文',
-        `- 页面名称: ${currentPage.name}`,
-      ];
-
-      if (currentPage.description) {
-        contextParts.push(`- 页面描述: ${currentPage.description}`);
-      }
-
-      if (currentPage.html) {
-        const truncatedHtml = currentPage.html.length > 8000
-          ? currentPage.html.substring(0, 8000) + '\n<!-- [...已截断...] -->'
-          : currentPage.html;
-        contextParts.push(`\n### 当前页面 HTML:\n\`\`\`html\n${truncatedHtml}\n\`\`\``);
-      }
-
-      if (editorStore.selectedElementHtml) {
-        const selectedHtml = editorStore.selectedElementHtml.length > 2000
-          ? editorStore.selectedElementHtml.substring(0, 2000) + '\n<!-- [...已截断...] -->'
-          : editorStore.selectedElementHtml;
-        contextParts.push(`\n### 当前选中元素 (${editorStore.selectedElementTag || 'unknown'}):\n\`\`\`html\n${selectedHtml}\n\`\`\``);
-      }
-
-      contextParts.push(`\n## 响应操作\n生成 HTML 时，在代码开头用注释标记操作类型：\n- 替换整个页面: <!-- ACTION:REPLACE_PAGE -->\n- 修改选中元素: <!-- ACTION:MODIFY_SELECTED -->（HTML 将替换当前选中的元素）\n- 追加新内容: <!-- ACTION:APPEND -->（默认，追加到页面末尾）\n\n当用户要求修改已有元素时，使用 MODIFY_SELECTED。\n当用户要求全新设计时，使用 REPLACE_PAGE。\n当用户要求添加新部分时，使用 APPEND。`);
-
-      systemContent += contextParts.join('\n');
-    }
-
-    // 创建增强的消息数组
-    const enhancedMessages: ChatMessage[] = [
-      { role: 'system', content: systemContent },
-      ...aiStore.messages.slice(-10), // 只包含最近10条消息作为上下文
-      { role: 'user', content: enhancedPrompt }
-    ];
-
     // 发送后清除 skill 选中状态
     aiStore.setActiveSkill(null);
 
@@ -341,39 +300,106 @@ async function sendMessage() {
       return;
     }
 
+    // 使用 PromptBuilder 构建消息
+    const useTools = aiStore.config.enableToolCalling !== false;
+    const promptBuilder = new PromptBuilder();
+    const systemPrompt = promptBuilder.buildSystemPrompt({
+      skill: activeSkill.value,
+      currentPage: projectStore.currentPage,
+      selectedElementHtml: editorStore.selectedElementHtml,
+      selectedElementTag: editorStore.selectedElementTag,
+      projectName: projectStore.project?.name,
+      hasTools: useTools,
+    });
+
+    const enhancedMessages = promptBuilder.buildMessages(
+      aiStore.messages,
+      systemPrompt,
+      message
+    );
+
     // Create AI service
     const aiService = createAIService(aiStore.config);
 
-    // Use streaming chat
-    let fullResponse = '';
-    for await (const chunk of aiService.chat(enhancedMessages)) {
-      fullResponse += chunk;
-      streamingResponse.value = fullResponse;
-      aiStore.messages[assistantMessageIndex].content = fullResponse;
-      await scrollToBottom();
-    }
+    if (useTools) {
+      // ====== Agent 模式：支持工具调用和多轮迭代 ======
+      const toolExecutor = new ToolExecutor();
+      const controller = aiStore.startAgent();
 
-    // Auto-extract and apply code to canvas
-    const extractedHtml = extractHtmlFromResponse(fullResponse);
-    if (extractedHtml) {
-      lastGeneratedCode.value = extractedHtml;
-      const { action, html } = parseAIAction(extractedHtml);
-      editorStore.setPendingAction(action, html);
-
-      const actionLabels: Record<string, string> = {
-        'replace-page': '替换页面',
-        'modify-selected': '修改选中元素',
-        'append': '追加内容'
-      };
-
-      aiStore.addMessage({
-        role: 'assistant',
-        content: `已自动应用到画布（${actionLabels[action] || '追加'}）。\n继续对话可以迭代优化页面。`
+      const agent = new Agent(aiService, toolExecutor, {
+        maxIterations: aiStore.config.maxAgentIterations || 10,
+        signal: controller.signal,
       });
-      await scrollToBottom();
-    }
 
-    isLoading.value = false;
+      await agent.run(enhancedMessages, ALL_TOOLS, {
+        onTextChunk: (text: string) => {
+          const current = aiStore.messages[assistantMessageIndex].content || '';
+          aiStore.messages[assistantMessageIndex].content = current + text;
+          streamingResponse.value = aiStore.messages[assistantMessageIndex].content;
+          scrollToBottom();
+        },
+        onToolCallStart: (toolCall: any) => {
+          const current = aiStore.messages[assistantMessageIndex].content || '';
+          const toolIndicator = `\n\n🔧 调用工具: ${toolCall.name}...\n`;
+          aiStore.messages[assistantMessageIndex].content = current + toolIndicator;
+          streamingResponse.value = aiStore.messages[assistantMessageIndex].content;
+          aiStore.addToolCall(toolCall);
+          scrollToBottom();
+        },
+        onToolCallResult: (result: any) => {
+          const current = aiStore.messages[assistantMessageIndex].content || '';
+          const status = result.isError ? '❌' : '✅';
+          const preview = result.content.substring(0, 150);
+          const indicator = `\n${status} ${result.isError ? '失败' : '完成'}: ${preview}${result.content.length > 150 ? '...' : ''}\n`;
+          aiStore.messages[assistantMessageIndex].content = current + indicator;
+          streamingResponse.value = aiStore.messages[assistantMessageIndex].content;
+          scrollToBottom();
+        },
+        onIterationStart: (iteration: number, maxIterations: number) => {
+          aiStore.setAgentIterations(iteration);
+        },
+        onComplete: (finalText: string) => {
+          // 尝试从文本中提取 HTML（工具调用模式下的后备方案）
+          if (finalText) {
+            const extractedHtml = extractHtmlFromResponse(finalText);
+            if (extractedHtml) {
+              lastGeneratedCode.value = extractedHtml;
+              const { action, html } = parseAIAction(extractedHtml);
+              editorStore.setPendingAction(action, html);
+            }
+          }
+          isLoading.value = false;
+          aiStore.setAgentRunning(false);
+          aiStore.clearToolCalls();
+        },
+        onError: (error: Error) => {
+          aiStore.messages[assistantMessageIndex].content =
+            `错误: ${error.message || '未知错误'}`;
+          aiStore.setError(error.message);
+          isLoading.value = false;
+          aiStore.setAgentRunning(false);
+          scrollToBottom();
+        },
+      });
+    } else {
+      // ====== 纯文本模式：兼容模式 ======
+      let fullResponse = '';
+      for await (const chunk of aiService.chat(enhancedMessages)) {
+        fullResponse += chunk;
+        streamingResponse.value = fullResponse;
+        aiStore.messages[assistantMessageIndex].content = fullResponse;
+        await scrollToBottom();
+      }
+
+      // Auto-extract and apply code to canvas
+      const extractedHtml = extractHtmlFromResponse(fullResponse);
+      if (extractedHtml) {
+        lastGeneratedCode.value = extractedHtml;
+        const { action, html } = parseAIAction(extractedHtml);
+        editorStore.setPendingAction(action, html);
+      }
+      isLoading.value = false;
+    }
   } catch (error) {
     aiStore.messages[assistantMessageIndex].content =
       `错误: ${error instanceof Error ? error.message : '未知错误'}`;
@@ -472,6 +498,11 @@ function insertCode() {
 function clearChat() {
   lastGeneratedCode.value = '';
   aiStore.clearMessages();
+}
+
+function cancelAgent() {
+  aiStore.cancelAgent();
+  isLoading.value = false;
 }
 
 async function scrollToBottom() {

@@ -5,7 +5,7 @@
  * All AI service implementations (Claude, OpenAI, Local) must implement this interface.
  */
 
-import type { AIService, ChatMessage, ProjectContext, GeneratedCode, AIServiceConfig } from '@/types';
+import type { AIService, ChatMessage, ProjectContext, GeneratedCode, AIServiceConfig, ToolDefinition, AgentStreamEvent } from '@/types';
 
 /**
  * Base AI service class with common functionality
@@ -27,6 +27,17 @@ export abstract class BaseAIService implements AIService {
    * Chat with streaming response
    */
   abstract chat(messages: ChatMessage[]): AsyncGenerator<string>;
+
+  /**
+   * Chat with tool calling support - streaming AgentStreamEvent
+   * Default implementation falls back to text-only chat()
+   */
+  async *chatWithTools(messages: ChatMessage[], _tools: ToolDefinition[]): AsyncGenerator<AgentStreamEvent> {
+    for await (const chunk of this.chat(messages)) {
+      yield { type: 'text', content: chunk };
+    }
+    yield { type: 'done', stopReason: 'end_turn' };
+  }
 
   /**
    * Check if the service is properly configured

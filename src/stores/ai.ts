@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import type { AIServiceConfig, ChatMessage, Skill } from '../types';
+import type { AIServiceConfig, ChatMessage, Skill, ToolCall } from '../types';
 
 const DEFAULT_SYSTEM_PROMPT = '你是一位专业的前端开发工程师和 UI 设计师。请生成完整、美观、可直接使用的 HTML 页面。所有样式必须内联在 style 属性中。不要使用任何外部依赖。';
 
@@ -235,6 +235,12 @@ export const useAIStore = defineStore('ai', () => {
   const isLoading = ref(false);
   const error = ref<string | null>(null);
 
+  // Agent state
+  const isAgentRunning = ref(false);
+  const agentIterations = ref(0);
+  const currentToolCalls = ref<ToolCall[]>([]);
+  const abortController = ref<AbortController | null>(null);
+
   // Skill state
   const skills = ref<Skill[]>([]);
   const activeSkillId = ref<string | null>(null);
@@ -325,6 +331,40 @@ export const useAIStore = defineStore('ai', () => {
     error.value = err;
   }
 
+  // Agent management
+  function setAgentRunning(running: boolean) {
+    isAgentRunning.value = running;
+    if (!running) {
+      abortController.value = null;
+    }
+  }
+
+  function setAgentIterations(n: number) {
+    agentIterations.value = n;
+  }
+
+  function addToolCall(tc: ToolCall) {
+    currentToolCalls.value.push(tc);
+  }
+
+  function clearToolCalls() {
+    currentToolCalls.value = [];
+  }
+
+  function startAgent(): AbortController {
+    const controller = new AbortController();
+    abortController.value = controller;
+    isAgentRunning.value = true;
+    agentIterations.value = 0;
+    currentToolCalls.value = [];
+    return controller;
+  }
+
+  function cancelAgent() {
+    abortController.value?.abort();
+    isAgentRunning.value = false;
+  }
+
   return {
     config,
     messages,
@@ -333,6 +373,10 @@ export const useAIStore = defineStore('ai', () => {
     skills,
     activeSkillId,
     getActiveSkill,
+    isAgentRunning,
+    agentIterations,
+    currentToolCalls,
+    abortController,
     loadConfig,
     saveConfig,
     clearMessages,
@@ -343,6 +387,12 @@ export const useAIStore = defineStore('ai', () => {
     saveSkills,
     addSkill,
     deleteSkill,
-    setActiveSkill
+    setActiveSkill,
+    setAgentRunning,
+    setAgentIterations,
+    addToolCall,
+    clearToolCalls,
+    startAgent,
+    cancelAgent
   }
 });

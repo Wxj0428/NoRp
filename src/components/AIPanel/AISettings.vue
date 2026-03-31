@@ -117,6 +117,46 @@
           />
         </div>
 
+        <!-- Agent Settings -->
+        <div class="border-t border-gray-700 pt-4">
+          <label class="block text-sm font-medium text-gray-300 mb-3">Agent 设置</label>
+
+          <!-- Enable Tool Calling -->
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <div class="text-sm text-white">启用工具调用</div>
+              <div class="text-xs text-gray-500">AI 可以主动读取/修改页面，多轮自主迭代完成任务</div>
+            </div>
+            <button
+              @click="localConfig.enableToolCalling = !localConfig.enableToolCalling"
+              :class="[
+                'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
+                localConfig.enableToolCalling !== false ? 'bg-blue-600' : 'bg-gray-600'
+              ]"
+            >
+              <span
+                :class="[
+                  'inline-block h-4 w-4 transform rounded-full bg-white transition-transform',
+                  localConfig.enableToolCalling !== false ? 'translate-x-6' : 'translate-x-1'
+                ]"
+              />
+            </button>
+          </div>
+
+          <!-- Max Iterations -->
+          <div v-if="localConfig.enableToolCalling !== false">
+            <label class="block text-xs text-gray-400 mb-1">最大迭代次数</label>
+            <input
+              v-model.number="localConfig.maxAgentIterations"
+              type="number"
+              min="1"
+              max="20"
+              class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-white text-sm"
+            />
+            <p class="text-xs text-gray-500 mt-1">Agent 在单次请求中的最大工具调用轮数（1-20，默认10）</p>
+          </div>
+        </div>
+
         <!-- Skills Management -->
         <div class="border-t border-gray-700 pt-4">
           <div class="flex items-center justify-between mb-3">
@@ -257,7 +297,9 @@ const localConfig = ref<AIServiceConfig>({
   baseURL: '',
   model: '',
   temperature: 0.7,
-  maxTokens: 4096
+  maxTokens: 4096,
+  enableToolCalling: true,
+  maxAgentIterations: 10,
 });
 
 const showApiKey = ref(false);
