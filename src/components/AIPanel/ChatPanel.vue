@@ -159,7 +159,7 @@
           @click="insertCode"
           class="px-3 py-1 text-xs bg-green-600 hover:bg-green-700 text-white rounded transition"
         >
-          ✅ 插入到画布
+          重新应用到画布
         </button>
         <button
           @click="clearChat"
@@ -380,6 +380,38 @@ async function sendMessage() {
     aiStore.setError(error instanceof Error ? error.message : '未知错误');
     isLoading.value = false;
   }
+}
+
+function extractHtmlFromResponse(response: string): string | null {
+  // 1. Try ```html ... ``` code block
+  const codeMatch = response.match(/```html\n([\s\S]*?)\n```/);
+  if (codeMatch) return codeMatch[1];
+
+  // 2. Try ``` ... ``` code block (no language tag)
+  const genericMatch = response.match(/```\n([\s\S]*?)\n```/);
+  if (genericMatch && genericMatch[1].includes('<') && genericMatch[1].includes('>')) {
+    return genericMatch[1];
+  }
+
+  // 3. Try full HTML document
+  const htmlMatch = response.match(/<html[\s\S]*?<\/html>/i);
+  if (htmlMatch) return htmlMatch[0];
+
+  // 4. Try <style> + HTML fragment pattern
+  const styleHtmlMatch = response.match(/(<style[\s\S]*?<\/style>\s*<[\s\S]*)/);
+  if (styleHtmlMatch) return styleHtmlMatch[1];
+
+  // 5. Try any substantial HTML content (starts with < and has multiple tags)
+  const tagCount = (response.match(/<[a-z][a-z0-9]*[\s>]/gi) || []).length;
+  if (tagCount >= 3) {
+    // Find the first < to last > as a heuristic
+    const firstTag = response.indexOf('<');
+    if (firstTag >= 0) {
+      return response.substring(firstTag);
+    }
+  }
+
+  return null;
 }
 
 function parseAIAction(html: string): { action: AIActionType; html: string } {
