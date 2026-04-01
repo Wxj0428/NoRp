@@ -280,13 +280,16 @@ import { ref, computed, nextTick } from 'vue';
 import { useProjectStore } from '@/stores/project';
 import { useAIStore } from '@/stores/ai';
 import { useEditorStore } from '@/stores/editor';
-import { useAIGeneration } from '@/composables/useAIGeneration';
-import type { Page } from '@/types';
+import { createAIService } from '@/services/ai';
+import { Agent } from '@/services/ai/agent';
+import { ToolExecutor } from '@/services/ai/tools/executor';
+import { ALL_TOOLS } from '@/services/ai/tools';
+import { PromptBuilder } from '@/services/ai/prompt-builder';
+import type { Page, ToolCallDetail, ChatMessage } from '@/types';
 
 const projectStore = useProjectStore();
 const aiStore = useAIStore();
 const editorStore = useEditorStore();
-const { optimizeDescriptionStream, generatePageFromDescriptionStream } = useAIGeneration();
 
 const editingPageId = ref<string | null>(null);
 const editingName = ref('');
@@ -409,7 +412,7 @@ function saveDescription() {
   }
 }
 
-// AI: Optimize existing description content (streaming)
+// AI: Optimize existing description content (Agent mode)
 async function aiOptimizeDescription() {
   const content = descriptionModal.value.content.trim();
   if (!content) {
@@ -425,21 +428,67 @@ async function aiOptimizeDescription() {
 
   isGeneratingDesc.value = true;
   optimizeBuffer.value = '';
+
   try {
-    await optimizeDescriptionStream(content, (chunk) => {
-      optimizeBuffer.value += chunk;
-    });
-    // Write result back to textarea
-    descriptionModal.value.content = optimizeBuffer.value;
+    const aiService = createAIService(aiStore.config);
+    const useTools = aiStore.config.enableToolCalling !== false;
+
+    const systemPrompt = `你是一位专业的 UI/UX 设计师。用户会提供一段页面设计思路/描述，请优化它。
+
+优化方向：
+1. 补充缺失的设计细节（布局、配色、字体、间距等）
+2. 完善交互流程和用户体验描述
+3. 增加技术实现建议
+4. 使描述更加清晰、结构化、专业
+
+${useTools ? '你可以使用工具读取当前页面的 HTML 来更好地理解设计上下文，从而给出更精准的优化建议。' : ''}
+
+请直接输出优化后的文本，不要使用代码块包裹，保持中文。`;
+
+    const messages: ChatMessage[] = [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: `请优化以下设计思路：\n\n${content}` },
+    ];
+
+    if (useTools) {
+      const toolExecutor = new ToolExecutor();
+      const controller = aiStore.startAgent();
+      const agent = new Agent(aiService, toolExecutor, {
+        maxIterations: 3,
+        signal: controller.signal,
+      });
+
+      let fullText = '';
+      const timeoutId = setTimeout(() => { controller.abort(); }, 60000);
+      try {
+        await agent.run(messages, ALL_TOOLS, {
+          onTextChunk: (text) => { fullText += text; },
+          onToolCallStart: () => {},
+          onToolCallResult: () => {},
+          onIterationStart: () => {},
+          onComplete: (text) => { fullText = text || fullText; },
+          onError: (error) => { throw error; },
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
+      descriptionModal.value.content = fullText;
+    } else {
+      for await (const chunk of aiService.chat(messages)) {
+        optimizeBuffer.value += chunk;
+      }
+      descriptionModal.value.content = optimizeBuffer.value;
+    }
   } catch (error) {
     alert('AI 优化失败: ' + (error instanceof Error ? error.message : '未知错误'));
   } finally {
     isGeneratingDesc.value = false;
     optimizeBuffer.value = '';
+    aiStore.setAgentRunning(false);
   }
 }
 
-// AI: Generate page to canvas from description content (streaming)
+// AI: Generate page to canvas from description content (Agent mode)
 async function aiGenerateToCanvas() {
   const originalContent = descriptionModal.value.content.trim();
   const page = descriptionModal.value.page;
@@ -461,25 +510,87 @@ async function aiGenerateToCanvas() {
 
   isGeneratingToCanvas.value = true;
   generateBuffer.value = '';
+
   try {
-    await generatePageFromDescriptionStream(originalContent, (chunk) => {
-      generateBuffer.value += chunk;
+    const aiService = createAIService(aiStore.config);
+    const useTools = aiStore.config.enableToolCalling !== false;
+
+    const promptBuilder = new PromptBuilder();
+    const systemPrompt = promptBuilder.buildSystemPrompt({
+      currentPage: page,
+      hasTools: useTools,
     });
 
-    if (generateBuffer.value) {
-      // Extract HTML from response
-      const codeMatch = generateBuffer.value.match(/```html\n([\s\S]*?)\n```/);
-      const html = codeMatch ? codeMatch[1]
-        : generateBuffer.value.match(/<html[\s\S]*?<\/html>/)?.[0]
-        || (generateBuffer.value.includes('<') && generateBuffer.value.includes('>') ? generateBuffer.value : '');
+    const messages: ChatMessage[] = promptBuilder.buildMessages(
+      [],
+      systemPrompt,
+      `请根据以下设计思路生成完整的页面：\n\n${originalContent}`,
+    );
 
-      if (html) {
-        const pageId = page?.id || projectStore.currentPageId;
+    if (useTools) {
+      const toolExecutor = new ToolExecutor();
+      const controller = aiStore.startAgent();
+      const agent = new Agent(aiService, toolExecutor, {
+        maxIterations: aiStore.config.maxAgentIterations || 10,
+        signal: controller.signal,
+      });
+
+      let fullText = '';
+      let agentUsedTools = false;
+
+      // 添加超时保护：120秒后自动取消
+      const timeoutId = setTimeout(() => {
+        controller.abort();
+      }, 120000);
+
+      try {
+        await agent.run(messages, ALL_TOOLS, {
+          onTextChunk: (text) => { fullText += text; },
+          onToolCallStart: () => { agentUsedTools = true; },
+          onToolCallResult: () => {},
+          onIterationStart: () => {},
+          onComplete: (text) => { fullText = text || fullText; },
+          onError: (error) => { throw error; },
+        });
+      } finally {
+        clearTimeout(timeoutId);
+      }
+
+      if (agentUsedTools) {
+        // Agent 模式下，工具已经直接修改了画布
         closeDescriptionModal();
-        await nextTick();
-        editorStore.setPendingAction('replace-page', html, pageId);
       } else {
-        alert('AI 未能生成有效的 HTML 内容');
+        // Agent 没用工具，从文本中提取 HTML
+        const extractedHtml = extractHtmlFromText(fullText);
+        if (extractedHtml) {
+          const pageId = page?.id || projectStore.currentPageId;
+          closeDescriptionModal();
+          await nextTick();
+          editorStore.setPendingAction('replace-page', extractedHtml, pageId);
+        } else {
+          alert('AI 未能生成有效的 HTML 内容');
+        }
+      }
+    } else {
+      // 纯文本回退模式
+      for await (const chunk of aiService.chat(messages)) {
+        generateBuffer.value += chunk;
+      }
+
+      if (generateBuffer.value) {
+        const codeMatch = generateBuffer.value.match(/```html\n([\s\S]*?)\n```/);
+        const html = codeMatch ? codeMatch[1]
+          : generateBuffer.value.match(/<html[\s\S]*?<\/html>/)?.[0]
+          || (generateBuffer.value.includes('<') && generateBuffer.value.includes('>') ? generateBuffer.value : '');
+
+        if (html) {
+          const pageId = page?.id || projectStore.currentPageId;
+          closeDescriptionModal();
+          await nextTick();
+          editorStore.setPendingAction('replace-page', html, pageId);
+        } else {
+          alert('AI 未能生成有效的 HTML 内容');
+        }
       }
     }
   } catch (error) {
@@ -487,10 +598,11 @@ async function aiGenerateToCanvas() {
   } finally {
     isGeneratingToCanvas.value = false;
     generateBuffer.value = '';
+    aiStore.setAgentRunning(false);
   }
 }
 
-// AI: Generate page from description (context menu action)
+// AI: Generate page from description (context menu action, Agent mode)
 async function aiGenerateFromDescription(page: Page | null) {
   if (!page?.description?.trim()) return;
 
@@ -508,24 +620,81 @@ async function aiGenerateFromDescription(page: Page | null) {
   }
 
   try {
-    let fullResponse = '';
-    await generatePageFromDescriptionStream(page.description, (chunk) => {
-      fullResponse += chunk;
+    const aiService = createAIService(aiStore.config);
+    const useTools = aiStore.config.enableToolCalling !== false;
+
+    const promptBuilder = new PromptBuilder();
+    const systemPrompt = promptBuilder.buildSystemPrompt({
+      currentPage: projectStore.currentPage,
+      hasTools: useTools,
     });
 
-    const codeMatch = fullResponse.match(/```html\n([\s\S]*?)\n```/);
-    const html = codeMatch ? codeMatch[1]
-      : fullResponse.match(/<html[\s\S]*?<\/html>/)?.[0]
-      || (fullResponse.includes('<') && fullResponse.includes('>') ? fullResponse : '');
+    const messages: ChatMessage[] = promptBuilder.buildMessages(
+      aiStore.messages,
+      systemPrompt,
+      `请根据以下设计思路生成完整的页面：\n\n${page.description}`,
+    );
 
-    if (html) {
-      editorStore.setPendingAction('replace-page', html, page.id);
+    if (useTools) {
+      const toolExecutor = new ToolExecutor();
+      const controller = aiStore.startAgent();
+      const agent = new Agent(aiService, toolExecutor, {
+        maxIterations: aiStore.config.maxAgentIterations || 10,
+        signal: controller.signal,
+      });
+
+      let fullText = '';
+      await agent.run(messages, ALL_TOOLS, {
+        onTextChunk: (text) => { fullText += text; },
+        onToolCallStart: () => {},
+        onToolCallResult: () => {},
+        onIterationStart: () => {},
+        onComplete: (text) => {
+          fullText = text || fullText;
+          // 后备：如果 agent 没用工具，从文本提取 HTML
+          if (text) {
+            const extractedHtml = extractHtmlFromText(text);
+            if (extractedHtml) {
+              editorStore.setPendingAction('replace-page', extractedHtml, page.id);
+            }
+          }
+        },
+        onError: (error) => { throw error; },
+      });
     } else {
-      alert('AI 未能生成有效的 HTML 内容');
+      let fullResponse = '';
+      for await (const chunk of aiService.chat(messages)) {
+        fullResponse += chunk;
+      }
+
+      const extractedHtml = extractHtmlFromText(fullResponse);
+      if (extractedHtml) {
+        editorStore.setPendingAction('replace-page', extractedHtml, page.id);
+      } else {
+        alert('AI 未能生成有效的 HTML 内容');
+      }
     }
   } catch (error) {
     alert('AI 生成页面失败: ' + (error instanceof Error ? error.message : '未知错误'));
+  } finally {
+    aiStore.setAgentRunning(false);
   }
+}
+
+function extractHtmlFromText(text: string): string | null {
+  const codeMatch = text.match(/```html\n([\s\S]*?)\n```/);
+  if (codeMatch) return codeMatch[1];
+
+  const htmlMatch = text.match(/<html[\s\S]*?<\/html>/i);
+  if (htmlMatch) return htmlMatch[0];
+
+  const tagCount = (text.match(/<[a-z][a-z0-9]*[\s>]/gi) || []).length;
+  if (tagCount >= 3) {
+    const firstTag = text.indexOf('<');
+    if (firstTag >= 0) return text.substring(firstTag);
+  }
+
+  return null;
 }
 
 // Close context menu on click outside

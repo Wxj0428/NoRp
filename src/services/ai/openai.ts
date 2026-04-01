@@ -131,6 +131,8 @@ export class OpenAIService extends BaseAIService {
         temperature: this.config.temperature || 0.7,
         max_tokens: this.config.maxTokens || 4096,
         stream: true,
+      }, {
+        timeout: 120000, // 2 minute timeout
       });
 
       // Accumulate tool calls across streaming chunks

@@ -88,6 +88,45 @@
               : 'bg-gray-700 text-gray-200'
           ]"
         >
+          <!-- Tool Call Details (collapsible) -->
+          <div v-if="message.toolCallDetails && message.toolCallDetails.length > 0" class="mb-2 space-y-1">
+            <div
+              v-for="(tc, tcIdx) in message.toolCallDetails"
+              :key="tcIdx"
+              class="bg-gray-800 rounded overflow-hidden"
+            >
+              <!-- Summary row: clickable to expand -->
+              <button
+                @click="toggleToolDetail(`${index}-${tcIdx}`)"
+                class="w-full flex items-center gap-2 px-2 py-1.5 text-xs hover:bg-gray-600 transition text-left"
+              >
+                <svg
+                  :class="['w-3 h-3 text-gray-400 transition-transform', expandedToolDetails.has(`${index}-${tcIdx}`) ? 'rotate-90' : '']"
+                  fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                >
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                </svg>
+                <span v-if="tc.isError" class="text-red-400">❌</span>
+                <span v-else-if="tc.result" class="text-green-400">✅</span>
+                <span v-else class="text-yellow-400">⏳</span>
+                <span class="text-gray-300 font-medium">{{ tc.name }}</span>
+                <span v-if="!tc.result" class="text-yellow-400 ml-auto">执行中...</span>
+              </button>
+              <!-- Expanded detail -->
+              <div v-if="expandedToolDetails.has(`${index}-${tcIdx}`)" class="border-t border-gray-700 px-2 py-1.5 space-y-1">
+                <!-- Arguments -->
+                <div v-if="Object.keys(tc.arguments).length > 0">
+                  <div class="text-[10px] text-gray-500 mb-0.5">参数</div>
+                  <pre class="text-[11px] text-blue-300 bg-gray-900 rounded p-1.5 overflow-x-auto whitespace-pre-wrap max-h-32 overflow-y-auto">{{ formatToolArgs(tc.arguments) }}</pre>
+                </div>
+                <!-- Result -->
+                <div v-if="tc.result">
+                  <div class="text-[10px] text-gray-500 mb-0.5">结果</div>
+                  <pre class="text-[11px] bg-gray-900 rounded p-1.5 overflow-x-auto whitespace-pre-wrap max-h-40 overflow-y-auto" :class="tc.isError ? 'text-red-300' : 'text-green-300'">{{ tc.result }}</pre>
+                </div>
+              </div>
+            </div>
+          </div>
           <!-- Check if message contains code block -->
           <div v-if="message.content.includes('```')" class="text-sm space-y-2">
             <template v-for="(part, partIndex) in parseMessage(message.content)" :key="partIndex">
@@ -192,7 +231,7 @@ import { Agent } from '@/services/ai/agent';
 import { ToolExecutor } from '@/services/ai/tools/executor';
 import { ALL_TOOLS } from '@/services/ai/tools';
 import { PromptBuilder } from '@/services/ai/prompt-builder';
-import type { ChatMessage, Skill, AIActionType } from '@/types';
+import type { ChatMessage, Skill, AIActionType, ToolCallDetail } from '@/types';
 
 defineEmits<{
   close: []
@@ -209,6 +248,7 @@ const messagesContainer = ref<HTMLElement>();
 const isLoading = ref(false);
 const lastGeneratedCode = ref('');
 const streamingResponse = ref('');
+const expandedToolDetails = ref(new Set<string>());
 
 // Skill state
 const activeSkillId = computed(() => aiStore.activeSkillId);
@@ -331,6 +371,9 @@ async function sendMessage() {
         signal: controller.signal,
       });
 
+      // Track tool call details for collapsible display
+      const toolCallDetailsMap = new Map<string, ToolCallDetail>();
+
       await agent.run(enhancedMessages, ALL_TOOLS, {
         onTextChunk: (text: string) => {
           const current = aiStore.messages[assistantMessageIndex].content || '';
@@ -339,20 +382,27 @@ async function sendMessage() {
           scrollToBottom();
         },
         onToolCallStart: (toolCall: any) => {
-          const current = aiStore.messages[assistantMessageIndex].content || '';
-          const toolIndicator = `\n\n🔧 调用工具: ${toolCall.name}...\n`;
-          aiStore.messages[assistantMessageIndex].content = current + toolIndicator;
-          streamingResponse.value = aiStore.messages[assistantMessageIndex].content;
+          const detail: ToolCallDetail = {
+            id: toolCall.id,
+            name: toolCall.name,
+            arguments: toolCall.arguments,
+            timestamp: Date.now(),
+          };
+          toolCallDetailsMap.set(toolCall.id, detail);
+          // Store structured details on the message
+          const msg = aiStore.messages[assistantMessageIndex];
+          if (!msg.toolCallDetails) msg.toolCallDetails = [];
+          msg.toolCallDetails.push(detail);
           aiStore.addToolCall(toolCall);
           scrollToBottom();
         },
         onToolCallResult: (result: any) => {
-          const current = aiStore.messages[assistantMessageIndex].content || '';
-          const status = result.isError ? '❌' : '✅';
-          const preview = result.content.substring(0, 150);
-          const indicator = `\n${status} ${result.isError ? '失败' : '完成'}: ${preview}${result.content.length > 150 ? '...' : ''}\n`;
-          aiStore.messages[assistantMessageIndex].content = current + indicator;
-          streamingResponse.value = aiStore.messages[assistantMessageIndex].content;
+          // Update the detail with result
+          const detail = toolCallDetailsMap.get(result.toolCallId);
+          if (detail) {
+            detail.result = result.content;
+            detail.isError = result.isError;
+          }
           scrollToBottom();
         },
         onIterationStart: (iteration: number, maxIterations: number) => {
@@ -497,12 +547,38 @@ function insertCode() {
 
 function clearChat() {
   lastGeneratedCode.value = '';
+  isLoading.value = false;
+  expandedToolDetails.value.clear();
+  aiStore.cancelAgent();
   aiStore.clearMessages();
 }
 
 function cancelAgent() {
   aiStore.cancelAgent();
   isLoading.value = false;
+}
+
+function toggleToolDetail(key: string) {
+  if (expandedToolDetails.value.has(key)) {
+    expandedToolDetails.value.delete(key);
+  } else {
+    expandedToolDetails.value.add(key);
+  }
+  // Trigger reactivity
+  expandedToolDetails.value = new Set(expandedToolDetails.value);
+}
+
+function formatToolArgs(args: Record<string, any>): string {
+  // Truncate long HTML values for display
+  const formatted: Record<string, any> = {};
+  for (const [key, value] of Object.entries(args)) {
+    if (typeof value === 'string' && value.length > 500) {
+      formatted[key] = value.substring(0, 500) + `... (${value.length} 字符)`;
+    } else {
+      formatted[key] = value;
+    }
+  }
+  return JSON.stringify(formatted, null, 2);
 }
 
 async function scrollToBottom() {

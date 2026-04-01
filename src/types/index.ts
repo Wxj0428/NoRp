@@ -1,10 +1,20 @@
 // ============= AI Service Types =============
 
+export interface ToolCallDetail {
+  id: string;
+  name: string;
+  arguments: Record<string, any>;
+  result?: string;
+  isError?: boolean;
+  timestamp: number;
+}
+
 export interface ChatMessage {
   role: 'user' | 'assistant' | 'system' | 'tool';
   content: string;
   toolCalls?: ToolCall[];
   toolCallId?: string;
+  toolCallDetails?: ToolCallDetail[];
 }
 
 // ============= Tool Calling Types =============
