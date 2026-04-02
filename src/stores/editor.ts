@@ -2,6 +2,8 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { HistoryAction, ElementData, AIActionType } from '../types';
 
+const MAX_HISTORY = 50;
+
 export const useEditorStore = defineStore('editor', () => {
   // State
   const selectedElement = ref<HTMLElement | null>(null);
@@ -56,11 +58,26 @@ export const useEditorStore = defineStore('editor', () => {
       history.value = history.value.slice(0, historyIndex.value + 1);
     }
     history.value.push(action);
-    historyIndex.value++;
+
+    // Trim to max size
+    if (history.value.length > MAX_HISTORY) {
+      history.value = history.value.slice(history.value.length - MAX_HISTORY);
+    }
+    historyIndex.value = history.value.length - 1;
+  }
+
+  /** Push a page snapshot for undo/redo */
+  function pushSnapshot(pageId: string, pageHtml: string) {
+    pushHistory({
+      type: 'snapshot',
+      pageHtml,
+      pageId,
+      timestamp: new Date(),
+    });
   }
 
   function undo(): HistoryAction | null {
-    if (!canUndo.value) return null;
+    if (historyIndex.value <= 0) return null;
     historyIndex.value--;
     return history.value[historyIndex.value];
   }
@@ -138,6 +155,7 @@ export const useEditorStore = defineStore('editor', () => {
     updateSelectedElementInfo,
     hoverElement,
     pushHistory,
+    pushSnapshot,
     undo,
     redo,
     copy,

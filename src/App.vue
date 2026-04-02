@@ -44,13 +44,35 @@
     <!-- Main Content -->
     <div class="flex-1 flex overflow-hidden">
       <!-- Left Panel: Pages -->
-      <aside class="w-48 bg-gray-800 border-r border-gray-700 flex flex-col">
-        <PageList></PageList>
+      <aside
+        :class="['bg-gray-800 border-r border-gray-700 flex flex-col transition-all duration-200', leftPanelCollapsed ? 'w-10' : 'w-48']"
+      >
+        <div v-if="!leftPanelCollapsed" class="flex-1 overflow-y-auto">
+          <PageList></PageList>
+        </div>
+        <button
+          @click="leftPanelCollapsed = !leftPanelCollapsed"
+          class="p-2 text-gray-400 hover:text-gray-200 hover:bg-gray-700 text-xs border-t border-gray-700 mt-auto"
+          :title="leftPanelCollapsed ? '展开页面列表' : '折叠页面列表'"
+        >
+          {{ leftPanelCollapsed ? '▶' : '◀' }}
+        </button>
       </aside>
 
       <!-- Left Panel: Component Library -->
-      <aside class="w-64 bg-gray-800 border-r border-gray-700 overflow-y-auto">
-        <ComponentPalette></ComponentPalette>
+      <aside
+        :class="['bg-gray-800 border-r border-gray-700 overflow-y-auto transition-all duration-200', componentPanelCollapsed ? 'w-10' : 'w-64']"
+      >
+        <div v-if="!componentPanelCollapsed">
+          <ComponentPalette></ComponentPalette>
+        </div>
+        <button
+          @click="componentPanelCollapsed = !componentPanelCollapsed"
+          class="p-2 text-gray-400 hover:text-gray-200 hover:bg-gray-700 text-xs border-t border-gray-700"
+          :title="componentPanelCollapsed ? '展开组件库' : '折叠组件库'"
+        >
+          {{ componentPanelCollapsed ? '▶' : '◀' }}
+        </button>
       </aside>
 
       <!-- Center: Canvas -->
@@ -59,13 +81,24 @@
       </main>
 
       <!-- Right Panel: Properties & Layers -->
-      <aside class="w-80 bg-gray-800 border-l border-gray-700 overflow-y-auto">
-        <div class="border-b border-gray-700">
-          <PropertyPanel></PropertyPanel>
+      <aside
+        :class="['bg-gray-800 border-l border-gray-700 flex flex-col transition-all duration-200', rightPanelCollapsed ? 'w-10' : 'w-80']"
+      >
+        <div v-if="!rightPanelCollapsed" class="flex-1 overflow-y-auto">
+          <div class="border-b border-gray-700">
+            <PropertyPanel></PropertyPanel>
+          </div>
+          <div>
+            <LayerTree></LayerTree>
+          </div>
         </div>
-        <div>
-          <LayerTree></LayerTree>
-        </div>
+        <button
+          @click="rightPanelCollapsed = !rightPanelCollapsed"
+          class="p-2 text-gray-400 hover:text-gray-200 hover:bg-gray-700 text-xs border-t border-gray-700 mt-auto"
+          :title="rightPanelCollapsed ? '展开属性面板' : '折叠属性面板'"
+        >
+          {{ rightPanelCollapsed ? '◀' : '▶' }}
+        </button>
       </aside>
     </div>
 
@@ -141,6 +174,9 @@
     >
       🤖
     </button>
+
+    <!-- Toast Notifications -->
+    <Toast />
   </div>
 </template>
 
@@ -153,19 +189,29 @@ import PageList from './components/Editor/PageList.vue';
 import ComponentPalette from './components/ComponentLibrary/ComponentPalette.vue';
 import ChatPanel from './components/AIPanel/ChatPanel.vue';
 import AISettings from './components/AIPanel/AISettings.vue';
+import Toast from './components/common/Toast.vue';
 import { useProjectStore } from './stores/project';
 import { useEditorStore } from './stores/editor';
+import { useToastStore } from './stores/toast';
 import { storageService } from './services/storage';
 import { generateStandaloneHTML } from './services/html-generator';
+import { useKeyboard } from './composables/useKeyboard';
+import { registerDefaultShortcuts } from './core/shortcuts';
 
 const projectStore = useProjectStore();
 const editorStore = useEditorStore();
+const toast = useToastStore();
 
 const showAIPanel = ref(false);
 const showAISettings = ref(false);
 const isElectron = ref(false);
 const projectPath = ref<string | null>(null);
 const workspacePath = ref<string | null>(null);
+
+// Panel collapse states
+const leftPanelCollapsed = ref(false);
+const componentPanelCollapsed = ref(false);
+const rightPanelCollapsed = ref(false);
 
 // 项目路径显示（截断显示）
 const projectPathDisplay = computed(() => {
@@ -189,13 +235,17 @@ onMounted(() => {
   projectStore.createProject('Untitled Project');
   isElectron.value = !!(window as any).electronAPI;
 
-  console.log('Running in Electron:', isElectron.value);
+  // Register keyboard shortcuts
+  registerDefaultShortcuts({
+    editorStore,
+    projectStore,
+    saveProject,
+  });
+  useKeyboard();
 
   // Electron 模式下提示设置工作区
   if (isElectron.value && !workspacePath.value) {
     // 可选：首次启动时提示设置工作区
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    // setupWorkspaceDirectory();
   }
 
   // 监听 Electron 菜单事件
@@ -204,28 +254,20 @@ onMounted(() => {
 
     // 监听所有菜单事件
     electronAPI?.onMenuEvent?.((event: string, ..._args: any[]) => {
-      console.log('Menu event received:', event);
-
       switch (event) {
         case 'menu:ai-settings':
-          console.log('Opening AI settings');
           showAIPanel.value = true;
           showAISettings.value = true;
           break;
         case 'menu:new-project':
-          console.log('New project from menu');
           newProject();
           break;
         case 'menu:save':
-          console.log('Save from menu');
           saveProject();
           break;
         case 'menu:export':
-          console.log('Export from menu');
           exportHtml();
           break;
-        default:
-          console.log('Unhandled menu event:', event);
       }
     });
   }
@@ -242,7 +284,7 @@ async function setupWorkspaceDirectory() {
     if (!result.canceled && result.filePaths && result.filePaths.length > 0) {
       workspacePath.value = result.filePaths[0];
       console.log('工作区目录设置成功:', workspacePath.value);
-      alert('工作区目录已设置:\n' + workspacePath.value);
+      toast.success('工作区目录已设置: ' + workspacePath.value);
     }
   } catch (error) {
     console.error('设置工作区失败:', error);
@@ -271,31 +313,19 @@ async function chooseProjectLocation() {
 }
 
 function newProject() {
-  console.log('newProject 被调用');
-
   if (projectStore.isDirty) {
-    console.log('项目未保存，显示确认对话框');
     const confirmed = confirm('当前项目未保存，是否继续？');
-    if (!confirmed) {
-      console.log('用户取消新建项目');
-      return;
-    }
+    if (!confirmed) return;
   }
 
   // 重置项目路径
-  console.log('重置项目路径');
   projectPath.value = null;
 
   // 创建新项目
-  console.log('创建新项目');
   projectStore.createProject('New Project');
 
   // 确保编辑器状态也被重置
   editorStore.selectElement(null);
-
-  console.log('新项目已创建完成');
-  console.log('当前项目:', projectStore.project);
-  console.log('当前页面:', projectStore.currentPage);
 }
 
 async function openProject() {
@@ -317,9 +347,9 @@ async function openProject() {
             const project = JSON.parse(content);
             projectStore.loadProject(project);
             editorStore.clearHistory();
-            alert('✅ 项目已打开: ' + file.name);
+            toast.success('项目已打开: ' + file.name);
           } catch (error) {
-            alert('❌ 无法打开文件\n\n请确保是有效的 .norp 项目文件');
+            toast.error('无法打开文件，请确保是有效的 .norp 项目文件');
           }
         };
         reader.readAsText(file);
@@ -334,7 +364,7 @@ async function openProject() {
     if (result.canceled) return;
 
     if (!result.filePaths || result.filePaths.length === 0) {
-      alert('未选择文件');
+      toast.warning('未选择文件');
       return;
     }
 
@@ -346,20 +376,20 @@ async function openProject() {
       projectStore.loadProject(project);
       projectPath.value = filePath;
       editorStore.clearHistory();
-      alert('✅ 项目已打开: ' + project.name + '\n\n位置: ' + filePath);
+      toast.success('项目已打开: ' + project.name);
     } else {
-      alert('❌ 无法打开项目\n\n文件可能已损坏或格式不正确');
+      toast.error('无法打开项目，文件可能已损坏或格式不正确');
     }
   } catch (error) {
     console.error('打开项目异常:', error);
-    alert('打开项目失败');
+    toast.error('打开项目失败');
   }
 }
 
 async function saveProject() {
   try {
     if (!projectStore.project) {
-      alert('没有可保存的项目');
+      toast.warning('没有可保存的项目');
       return;
     }
 
@@ -375,7 +405,7 @@ async function saveProject() {
       URL.revokeObjectURL(url);
 
       projectStore.markAsSaved();
-      alert('✅ 项目已导出（浏览器模式：文件已下载）\n\n💡 提示：在 Electron 应用中可以保存到指定位置');
+      toast.success('项目已导出（浏览器模式：文件已下载）');
       return;
     }
 
@@ -406,20 +436,20 @@ async function saveProject() {
       projectStore.markAsSaved();
       projectStore.project.modifiedAt = new Date();
       projectPath.value = filePath;
-      alert('✅ 项目已保存到:\n' + filePath);
+      toast.success('项目已保存');
     } else {
-      alert('❌ 保存失败\n\n请检查:\n1. 是否有写入权限\n2. 磁盘空间是否充足\n3. 文件是否被其他程序占用');
+      toast.error('保存失败，请检查写入权限和磁盘空间');
     }
   } catch (error) {
     console.error('保存项目异常:', error);
-    alert('❌ 保存项目失败:\n' + (error instanceof Error ? error.message : String(error)));
+    toast.error('保存项目失败: ' + (error instanceof Error ? error.message : String(error)));
   }
 }
 
 async function exportHtml() {
   try {
     if (!projectStore.project) {
-      alert('没有可导出的项目');
+      toast.warning('没有可导出的项目');
       return;
     }
 
@@ -434,13 +464,13 @@ async function exportHtml() {
       a.download = projectStore.project.name + '.html';
       a.click();
       URL.revokeObjectURL(url);
-      alert('✅ 导出成功！\n\n文件已下载到浏览器下载目录。');
+      toast.success('导出成功！文件已下载到浏览器下载目录。');
       return;
     }
 
     // Electron 模式 - 导出到项目旁边的 _导出 目录
     if (!projectStore.project.path) {
-      alert('❌ 请先保存项目\n\n项目需要先保存才能导出到指定位置。');
+      toast.warning('请先保存项目，才能导出到指定位置');
       return;
     }
 
@@ -452,7 +482,7 @@ async function exportHtml() {
     const slashIndex = Math.max(lastSlashIndex, lastBackslashIndex);
 
     if (slashIndex === -1) {
-      alert('❌ 无法确定项目位置\n\n请先保存项目。');
+      toast.error('无法确定项目位置，请先保存项目');
       return;
     }
 
@@ -463,18 +493,16 @@ async function exportHtml() {
 
     await storageService.writeFile(htmlFilePath, html);
 
-    alert('✅ 导出成功！\n\n导出位置:\n' + exportDir + '\n\n文件可以直接双击运行，无需任何依赖！');
+    toast.success('导出成功！位置: ' + exportDir);
   } catch (error) {
     console.error('Failed to export:', error);
-    alert('❌ 导出失败: ' + (error instanceof Error ? error.message : '未知错误'));
+    toast.error('导出失败: ' + (error instanceof Error ? error.message : '未知错误'));
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function openAISettings() {
   showAIPanel.value = true;
   showAISettings.value = true;
-  console.log('Opening AI settings');
 }
 </script>
 

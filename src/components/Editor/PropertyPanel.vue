@@ -47,30 +47,7 @@
               placeholder="auto"
             />
           </div>
-          <div>
-            <label class="text-xs text-gray-500">X</label>
-            <input
-              v-model="styles.left"
-              @input="updateStyle"
-              type="text"
-              class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white"
-            />
-          </div>
-          <div>
-            <label class="text-xs text-gray-500">Y</label>
-            <input
-              v-model="styles.top"
-              @input="updateStyle"
-              type="text"
-              class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white"
-            />
-          </div>
         </div>
-      </div>
-
-      <!-- Spacing -->
-      <div class="space-y-2">
-        <label class="text-xs text-gray-400 uppercase tracking-wide">间距</label>
         <div class="grid grid-cols-2 gap-2">
           <div>
             <label class="text-xs text-gray-500">内边距</label>
@@ -93,31 +70,156 @@
         </div>
       </div>
 
-      <!-- Typography -->
+      <!-- Position & Overflow -->
       <div class="space-y-2">
-        <label class="text-xs text-gray-400 uppercase tracking-wide">文字</label>
-        <div class="space-y-2">
+        <label class="text-xs text-gray-400 uppercase tracking-wide">定位</label>
+        <div>
+          <label class="text-xs text-gray-500">position</label>
+          <select
+            v-model="styles.position"
+            @change="updateStyle"
+            class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white"
+          >
+            <option value="static">static</option>
+            <option value="relative">relative</option>
+            <option value="absolute">absolute</option>
+            <option value="fixed">fixed</option>
+            <option value="sticky">sticky</option>
+          </select>
+        </div>
+        <div v-if="styles.position !== 'static'" class="grid grid-cols-2 gap-2">
           <div>
-            <label class="text-xs text-gray-500">字号</label>
+            <label class="text-xs text-gray-500">top</label>
             <input
-              v-model="styles.fontSize"
+              v-model="styles.top"
               @input="updateStyle"
               type="text"
               class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white"
             />
           </div>
           <div>
-            <label class="text-xs text-gray-500">字体粗细</label>
+            <label class="text-xs text-gray-500">left</label>
+            <input
+              v-model="styles.left"
+              @input="updateStyle"
+              type="text"
+              class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white"
+            />
+          </div>
+          <div>
+            <label class="text-xs text-gray-500">right</label>
+            <input
+              v-model="styles.right"
+              @input="updateStyle"
+              type="text"
+              class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white"
+            />
+          </div>
+          <div>
+            <label class="text-xs text-gray-500">bottom</label>
+            <input
+              v-model="styles.bottom"
+              @input="updateStyle"
+              type="text"
+              class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white"
+            />
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="text-xs text-gray-500">z-index</label>
+            <input
+              v-model="styles.zIndex"
+              @input="updateStyle"
+              type="text"
+              class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white"
+            />
+          </div>
+          <div>
+            <label class="text-xs text-gray-500">overflow</label>
             <select
-              v-model="styles.fontWeight"
+              v-model="styles.overflow"
               @change="updateStyle"
               class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white"
             >
-              <option value="normal">正常</option>
-              <option value="500">中等</option>
-              <option value="600">半粗</option>
-              <option value="700">粗体</option>
+              <option value="visible">visible</option>
+              <option value="hidden">hidden</option>
+              <option value="scroll">scroll</option>
+              <option value="auto">auto</option>
             </select>
+          </div>
+        </div>
+        <div>
+          <label class="text-xs text-gray-500">opacity: {{ styles.opacity }}</label>
+          <input
+            v-model="styles.opacity"
+            @input="updateStyle"
+            type="range"
+            min="0"
+            max="1"
+            step="0.1"
+            class="w-full"
+          />
+        </div>
+      </div>
+
+      <!-- Typography -->
+      <div class="space-y-2">
+        <label class="text-xs text-gray-400 uppercase tracking-wide">文字</label>
+        <div class="space-y-2">
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-xs text-gray-500">字号</label>
+              <input
+                v-model="styles.fontSize"
+                @input="updateStyle"
+                type="text"
+                class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white"
+              />
+            </div>
+            <div>
+              <label class="text-xs text-gray-500">字体粗细</label>
+              <select
+                v-model="styles.fontWeight"
+                @change="updateStyle"
+                class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white"
+              >
+                <option value="normal">正常</option>
+                <option value="500">中等</option>
+                <option value="600">半粗</option>
+                <option value="700">粗体</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label class="text-xs text-gray-500">font-family</label>
+            <input
+              v-model="styles.fontFamily"
+              @input="updateStyle"
+              type="text"
+              class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white"
+              placeholder="sans-serif"
+            />
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-xs text-gray-500">行高</label>
+              <input
+                v-model="styles.lineHeight"
+                @input="updateStyle"
+                type="text"
+                class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white"
+              />
+            </div>
+            <div>
+              <label class="text-xs text-gray-500">字间距</label>
+              <input
+                v-model="styles.letterSpacing"
+                @input="updateStyle"
+                type="text"
+                class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white"
+              />
+            </div>
           </div>
           <div>
             <label class="text-xs text-gray-500">对齐方式</label>
@@ -211,6 +313,149 @@
         </div>
       </div>
 
+      <!-- Effects -->
+      <div class="space-y-2">
+        <label class="text-xs text-gray-400 uppercase tracking-wide">效果</label>
+        <div class="space-y-2">
+          <div>
+            <label class="text-xs text-gray-500">box-shadow</label>
+            <input
+              v-model="styles.boxShadow"
+              @input="updateStyle"
+              type="text"
+              class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white"
+              placeholder="0 2px 4px rgba(0,0,0,0.1)"
+            />
+          </div>
+          <div>
+            <label class="text-xs text-gray-500">transform</label>
+            <input
+              v-model="styles.transform"
+              @input="updateStyle"
+              type="text"
+              class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white"
+              placeholder="translateX(0) scale(1)"
+            />
+          </div>
+          <div>
+            <label class="text-xs text-gray-500">transition</label>
+            <input
+              v-model="styles.transition"
+              @input="updateStyle"
+              type="text"
+              class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white"
+              placeholder="all 0.3s ease"
+            />
+          </div>
+        </div>
+      </div>
+
+      <!-- Flex/Grid Layout -->
+      <div v-if="styles.display === 'flex' || styles.display === 'inline-flex' || styles.display === 'grid'" class="space-y-2">
+        <label class="text-xs text-gray-400 uppercase tracking-wide">
+          {{ styles.display === 'grid' ? '网格布局' : '弹性布局' }}
+        </label>
+
+        <template v-if="styles.display !== 'grid'">
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-xs text-gray-500">flex-direction</label>
+              <select
+                v-model="styles.flexDirection"
+                @change="updateStyle"
+                class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white"
+              >
+                <option value="">默认</option>
+                <option value="row">row</option>
+                <option value="row-reverse">row-reverse</option>
+                <option value="column">column</option>
+                <option value="column-reverse">column-reverse</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-xs text-gray-500">flex-wrap</label>
+              <select
+                v-model="styles.flexWrap"
+                @change="updateStyle"
+                class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white"
+              >
+                <option value="">默认</option>
+                <option value="nowrap">nowrap</option>
+                <option value="wrap">wrap</option>
+                <option value="wrap-reverse">wrap-reverse</option>
+              </select>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-xs text-gray-500">justify-content</label>
+              <select
+                v-model="styles.justifyContent"
+                @change="updateStyle"
+                class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white"
+              >
+                <option value="">默认</option>
+                <option value="flex-start">start</option>
+                <option value="center">center</option>
+                <option value="flex-end">end</option>
+                <option value="space-between">space-between</option>
+                <option value="space-around">space-around</option>
+                <option value="space-evenly">space-evenly</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-xs text-gray-500">align-items</label>
+              <select
+                v-model="styles.alignItems"
+                @change="updateStyle"
+                class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white"
+              >
+                <option value="">默认</option>
+                <option value="flex-start">start</option>
+                <option value="center">center</option>
+                <option value="flex-end">end</option>
+                <option value="stretch">stretch</option>
+                <option value="baseline">baseline</option>
+              </select>
+            </div>
+          </div>
+        </template>
+
+        <template v-if="styles.display === 'grid'">
+          <div>
+            <label class="text-xs text-gray-500">grid-template-columns</label>
+            <input
+              v-model="styles.gridTemplateColumns"
+              @input="updateStyle"
+              type="text"
+              class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white"
+              placeholder="1fr 1fr 1fr"
+            />
+          </div>
+          <div>
+            <label class="text-xs text-gray-500">grid-template-rows</label>
+            <input
+              v-model="styles.gridTemplateRows"
+              @input="updateStyle"
+              type="text"
+              class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white"
+              placeholder="auto"
+            />
+          </div>
+        </template>
+
+        <div>
+          <label class="text-xs text-gray-500">gap</label>
+          <input
+            v-model="styles.gap"
+            @input="updateStyle"
+            type="text"
+            class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white"
+            placeholder="0px"
+          />
+        </div>
+      </div>
+
       <!-- Display -->
       <div class="space-y-2">
         <label class="text-xs text-gray-400 uppercase tracking-wide">显示</label>
@@ -219,13 +464,65 @@
           @change="updateStyle"
           class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white"
         >
-          <option value="block">块级</option>
-          <option value="inline">内联</option>
-          <option value="inline-block">内联块</option>
-          <option value="flex">弹性布局</option>
-          <option value="grid">网格布局</option>
-          <option value="none">隐藏</option>
+          <option value="block">块级 (block)</option>
+          <option value="inline">内联 (inline)</option>
+          <option value="inline-block">内联块 (inline-block)</option>
+          <option value="flex">弹性 (flex)</option>
+          <option value="inline-flex">内联弹性 (inline-flex)</option>
+          <option value="grid">网格 (grid)</option>
+          <option value="none">隐藏 (none)</option>
         </select>
+      </div>
+
+      <!-- Attributes -->
+      <div class="space-y-2">
+        <label class="text-xs text-gray-400 uppercase tracking-wide">属性</label>
+        <div class="space-y-2">
+          <div v-if="isLinkElement">
+            <div>
+              <label class="text-xs text-gray-500">href</label>
+              <input
+                v-model="attributes.href"
+                @input="updateAttribute('href')"
+                type="text"
+                class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white"
+                placeholder="https://"
+              />
+            </div>
+          </div>
+          <div v-if="isImageElement">
+            <div>
+              <label class="text-xs text-gray-500">src</label>
+              <input
+                v-model="attributes.src"
+                @input="updateAttribute('src')"
+                type="text"
+                class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white"
+                placeholder="image url"
+              />
+            </div>
+            <div>
+              <label class="text-xs text-gray-500">alt</label>
+              <input
+                v-model="attributes.alt"
+                @input="updateAttribute('alt')"
+                type="text"
+                class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white"
+              />
+            </div>
+          </div>
+          <div v-if="isInputElement">
+            <div>
+              <label class="text-xs text-gray-500">placeholder</label>
+              <input
+                v-model="attributes.placeholder"
+                @input="updateAttribute('placeholder')"
+                type="text"
+                class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white"
+              />
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Actions -->
@@ -234,7 +531,7 @@
           @click="handleDelete"
           class="w-full py-2 px-4 bg-red-600 hover:bg-red-700 text-white rounded font-medium transition"
         >
-          🗑️ 删除元素
+          删除元素
         </button>
         <div class="text-xs text-gray-500 text-center">
           快捷键: Delete 或 Backspace
@@ -247,27 +544,70 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import { useEditorStore } from '@/stores/editor';
+import { useToastStore } from '@/stores/toast';
 
 const editorStore = useEditorStore();
+const toast = useToastStore();
 
 const selectedElement = computed(() => editorStore.selectedElement);
 
-const styles = ref({
+const isLinkElement = computed(() => {
+  const tag = selectedElement.value?.tagName?.toLowerCase();
+  return tag === 'a';
+});
+
+const isImageElement = computed(() => {
+  const tag = selectedElement.value?.tagName?.toLowerCase();
+  return tag === 'img';
+});
+
+const isInputElement = computed(() => {
+  const tag = selectedElement.value?.tagName?.toLowerCase();
+  return tag === 'input' || tag === 'textarea';
+});
+
+const styles = ref<Record<string, string>>({
   width: '',
   height: '',
   left: '',
   top: '',
+  right: '',
+  bottom: '',
   padding: '',
   margin: '',
+  position: 'static',
+  zIndex: '',
+  overflow: '',
+  opacity: '1',
   fontSize: '',
   fontWeight: '',
+  fontFamily: '',
+  lineHeight: '',
+  letterSpacing: '',
   textAlign: '',
   backgroundColor: '#ffffff',
   color: '#000000',
   borderWidth: '',
   borderRadius: '',
   borderColor: '#000000',
-  display: 'block'
+  display: 'block',
+  boxShadow: '',
+  transform: '',
+  transition: '',
+  flexDirection: '',
+  flexWrap: '',
+  justifyContent: '',
+  alignItems: '',
+  gap: '',
+  gridTemplateColumns: '',
+  gridTemplateRows: '',
+});
+
+const attributes = ref<Record<string, string>>({
+  href: '',
+  src: '',
+  alt: '',
+  placeholder: '',
 });
 
 // Update styles when element is selected
@@ -275,22 +615,49 @@ watch(
   selectedElement,
   (element) => {
     if (element) {
+      const cs = element.style;
       styles.value = {
-        width: element.style.width || '',
-        height: element.style.height || '',
-        left: element.style.left || '',
-        top: element.style.top || '',
-        padding: element.style.padding || '',
-        margin: element.style.margin || '',
-        fontSize: element.style.fontSize || '',
-        fontWeight: element.style.fontWeight || '',
-        textAlign: element.style.textAlign || '',
-        backgroundColor: rgbToHex(element.style.backgroundColor) || '#ffffff',
-        color: rgbToHex(element.style.color) || '#000000',
-        borderWidth: element.style.borderWidth || '',
-        borderRadius: element.style.borderRadius || '',
-        borderColor: rgbToHex(element.style.borderColor) || '#000000',
-        display: element.style.display || 'block'
+        width: cs.width || '',
+        height: cs.height || '',
+        left: cs.left || '',
+        top: cs.top || '',
+        right: cs.right || '',
+        bottom: cs.bottom || '',
+        padding: cs.padding || '',
+        margin: cs.margin || '',
+        position: cs.position || 'static',
+        zIndex: cs.zIndex || '',
+        overflow: cs.overflow || '',
+        opacity: cs.opacity || '1',
+        fontSize: cs.fontSize || '',
+        fontWeight: cs.fontWeight || '',
+        fontFamily: cs.fontFamily || '',
+        lineHeight: cs.lineHeight || '',
+        letterSpacing: cs.letterSpacing || '',
+        textAlign: cs.textAlign || '',
+        backgroundColor: rgbToHex(cs.backgroundColor) || '#ffffff',
+        color: rgbToHex(cs.color) || '#000000',
+        borderWidth: cs.borderWidth || '',
+        borderRadius: cs.borderRadius || '',
+        borderColor: rgbToHex(cs.borderColor) || '#000000',
+        display: cs.display || 'block',
+        boxShadow: cs.boxShadow || '',
+        transform: cs.transform || '',
+        transition: cs.transition || '',
+        flexDirection: cs.flexDirection || '',
+        flexWrap: cs.flexWrap || '',
+        justifyContent: cs.justifyContent || '',
+        alignItems: cs.alignItems || '',
+        gap: cs.gap || '',
+        gridTemplateColumns: (cs as any).gridTemplateColumns || '',
+        gridTemplateRows: (cs as any).gridTemplateRows || '',
+      };
+      // Read HTML attributes
+      attributes.value = {
+        href: element.getAttribute('href') || '',
+        src: element.getAttribute('src') || '',
+        alt: element.getAttribute('alt') || '',
+        placeholder: element.getAttribute('placeholder') || '',
       };
     }
   },
@@ -301,32 +668,33 @@ function updateStyle() {
   if (!selectedElement.value) return;
 
   const element = selectedElement.value;
-  Object.assign(element.style, {
-    width: styles.value.width,
-    height: styles.value.height,
-    left: styles.value.left,
-    top: styles.value.top,
-    padding: styles.value.padding,
-    margin: styles.value.margin,
-    fontSize: styles.value.fontSize,
-    fontWeight: styles.value.fontWeight,
-    textAlign: styles.value.textAlign,
-    backgroundColor: styles.value.backgroundColor,
-    color: styles.value.color,
-    borderWidth: styles.value.borderWidth,
-    borderRadius: styles.value.borderRadius,
-    borderColor: styles.value.borderColor,
-    display: styles.value.display
-  });
+  const s = styles.value;
+
+  // Map CSS property names (camelCase → CSS camelCase for Object.assign)
+  const styleUpdates: Record<string, string> = {};
+  for (const [key, value] of Object.entries(s)) {
+    if (!value) continue; // Skip empty values
+    // Convert camelCase keys to CSS property names
+    const cssKey = key.replace(/([A-Z])/g, '-$1').toLowerCase();
+    styleUpdates[key] = value;
+  }
+
+  Object.assign(element.style, styleUpdates);
+}
+
+function updateAttribute(name: string) {
+  if (!selectedElement.value) return;
+  const value = attributes.value[name];
+  if (value) {
+    selectedElement.value.setAttribute(name, value);
+  } else {
+    selectedElement.value.removeAttribute(name);
+  }
 }
 
 function handleDelete() {
   if (!selectedElement.value) return;
 
-  const confirmed = confirm('确定要删除这个元素吗？');
-  if (!confirmed) return;
-
-  // 触发自定义事件，让 Canvas 组件处理删除
   window.dispatchEvent(new CustomEvent('delete-element', {
     detail: { element: selectedElement.value }
   }));

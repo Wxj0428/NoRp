@@ -64,15 +64,15 @@ export const useProjectStore = defineStore('project', () => {
     isDirty.value = true;
   }
 
-  function addPage(name: string) {
+  function addPage(name: string, options?: { html?: string; description?: string }) {
     if (!project.value) return;
 
     const newPage: Page = {
       id: generateId(),
       name,
-      html: '<!-- Drag components here -->',
+      html: options?.html || '<!-- Drag components here -->',
       styles: {},
-      description: `这是一个新创建的页面。
+      description: options?.description || `这是一个新创建的页面。
 
 💡 设计建议：
 - 明确页面的主要功能和目标用户

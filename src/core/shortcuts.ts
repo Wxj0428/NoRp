@@ -1,7 +1,7 @@
 /**
  * Keyboard Shortcuts Manager
  *
- * Handles keyboard shortcuts for the application.
+ * Dispatches keyboard shortcuts as custom events that Canvas.vue and other components listen to.
  */
 
 export interface ShortcutConfig {
@@ -45,9 +45,6 @@ export class ShortcutManager {
     return false;
   }
 
-  /**
-   * Check if event matches shortcut
-   */
   private matches(event: KeyboardEvent, shortcut: ShortcutConfig): boolean {
     if (event.key.toLowerCase() !== shortcut.key.toLowerCase()) {
       return false;
@@ -74,21 +71,6 @@ export class ShortcutManager {
   }
 
   /**
-   * Get formatted shortcut string
-   */
-  formatShortcut(shortcut: ShortcutConfig): string {
-    const parts: string[] = [];
-
-    if (shortcut.ctrl || shortcut.meta) parts.push('Ctrl');
-    if (shortcut.shift) parts.push('Shift');
-    if (shortcut.alt) parts.push('Alt');
-
-    parts.push(shortcut.key.toUpperCase());
-
-    return parts.join(' + ');
-  }
-
-  /**
    * Clear all shortcuts
    */
   clear(): void {
@@ -99,83 +81,131 @@ export class ShortcutManager {
 // Export singleton instance
 export const shortcutManager = new ShortcutManager();
 
-// Default shortcuts
-shortcutManager.register({
-  key: 'z',
-  ctrl: true,
-  handler: () => {
-    // Undo - will be connected to editor store
-    console.log('Undo');
-  },
-  description: 'Undo'
-});
+/**
+ * Register default shortcuts with dependency injection.
+ * Call this from App.vue after stores are available.
+ */
+export function registerDefaultShortcuts(deps: {
+  editorStore: any;
+  projectStore: any;
+  saveProject: () => void;
+}) {
+  shortcutManager.clear();
 
-shortcutManager.register({
-  key: 'z',
-  ctrl: true,
-  shift: true,
-  handler: () => {
-    // Redo - will be connected to editor store
-    console.log('Redo');
-  },
-  description: 'Redo'
-});
+  // Undo
+  shortcutManager.register({
+    key: 'z',
+    ctrl: true,
+    handler: () => {
+      // Dispatch custom event that Canvas.vue listens to
+      window.dispatchEvent(new CustomEvent('editor:undo'));
+    },
+    description: 'Undo'
+  });
 
-shortcutManager.register({
-  key: 'c',
-  ctrl: true,
-  handler: () => {
-    // Copy - will be connected to editor store
-    console.log('Copy');
-  },
-  description: 'Copy'
-});
+  // Redo (Ctrl+Shift+Z)
+  shortcutManager.register({
+    key: 'z',
+    ctrl: true,
+    shift: true,
+    handler: () => {
+      window.dispatchEvent(new CustomEvent('editor:redo'));
+    },
+    description: 'Redo'
+  });
 
-shortcutManager.register({
-  key: 'v',
-  ctrl: true,
-  handler: () => {
-    // Paste - will be connected to editor store
-    console.log('Paste');
-  },
-  description: 'Paste'
-});
+  // Redo (Ctrl+Y)
+  shortcutManager.register({
+    key: 'y',
+    ctrl: true,
+    handler: () => {
+      window.dispatchEvent(new CustomEvent('editor:redo'));
+    },
+    description: 'Redo'
+  });
 
-shortcutManager.register({
-  key: 'x',
-  ctrl: true,
-  handler: () => {
-    // Cut - will be connected to editor store
-    console.log('Cut');
-  },
-  description: 'Cut'
-});
+  // Delete
+  shortcutManager.register({
+    key: 'Delete',
+    handler: () => {
+      window.dispatchEvent(new CustomEvent('editor:delete'));
+    },
+    description: 'Delete selected element'
+  });
 
-shortcutManager.register({
-  key: 'Delete',
-  handler: () => {
-    // Delete - will be connected to editor store
-    console.log('Delete');
-  },
-  description: 'Delete selected element'
-});
+  // Save
+  shortcutManager.register({
+    key: 's',
+    ctrl: true,
+    handler: () => {
+      deps.saveProject();
+    },
+    description: 'Save project'
+  });
 
-shortcutManager.register({
-  key: 'd',
-  ctrl: true,
-  handler: () => {
-    // Duplicate - will be connected to editor store
-    console.log('Duplicate');
-  },
-  description: 'Duplicate selected element'
-});
+  // Copy
+  shortcutManager.register({
+    key: 'c',
+    ctrl: true,
+    handler: () => {
+      const el = deps.editorStore.selectedElement;
+      if (el) {
+        deps.editorStore.copy({
+          tagName: el.tagName,
+          html: el.outerHTML,
+          styles: { ...el.style },
+          attributes: {},
+          content: el.textContent || ''
+        });
+      }
+    },
+    description: 'Copy'
+  });
 
-shortcutManager.register({
-  key: 's',
-  ctrl: true,
-  handler: () => {
-    // Save - will be connected to project store
-    console.log('Save');
-  },
-  description: 'Save project'
-});
+  // Paste
+  shortcutManager.register({
+    key: 'v',
+    ctrl: true,
+    handler: () => {
+      const clipData = deps.editorStore.paste();
+      if (clipData?.html) {
+        // Use pendingInsert to insert clipboard content
+        deps.editorStore.setPendingInsert(clipData.html);
+      }
+    },
+    description: 'Paste'
+  });
+
+  // Cut
+  shortcutManager.register({
+    key: 'x',
+    ctrl: true,
+    handler: () => {
+      const el = deps.editorStore.selectedElement;
+      if (el) {
+        deps.editorStore.copy({
+          tagName: el.tagName,
+          html: el.outerHTML,
+          styles: { ...el.style },
+          attributes: {},
+          content: el.textContent || ''
+        });
+        window.dispatchEvent(new CustomEvent('editor:delete'));
+      }
+    },
+    description: 'Cut'
+  });
+
+  // Duplicate
+  shortcutManager.register({
+    key: 'd',
+    ctrl: true,
+    handler: () => {
+      const el = deps.editorStore.selectedElement;
+      if (el) {
+        deps.editorStore.setPendingInsert(el.outerHTML);
+      }
+    },
+    description: 'Duplicate selected element'
+  });
+}

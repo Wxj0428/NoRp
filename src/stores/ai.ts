@@ -260,6 +260,7 @@ export const useAIStore = defineStore('ai', () => {
       }
     }
     loadSkills();
+    loadMessages();
   }
 
   // Save config to localStorage
@@ -316,11 +317,35 @@ export const useAIStore = defineStore('ai', () => {
   // Clear conversation
   function clearMessages() {
     messages.value = [];
+    saveMessages();
   }
 
   // Add message
   function addMessage(message: ChatMessage) {
     messages.value.push(message);
+    saveMessages();
+  }
+
+  // Persist messages to localStorage (last 100)
+  function saveMessages() {
+    try {
+      const toSave = messages.value.slice(-100);
+      localStorage.setItem('norp-ai-messages', JSON.stringify(toSave));
+    } catch (e) {
+      console.error('Failed to save messages:', e);
+    }
+  }
+
+  // Load messages from localStorage
+  function loadMessages() {
+    try {
+      const saved = localStorage.getItem('norp-ai-messages');
+      if (saved) {
+        messages.value = JSON.parse(saved);
+      }
+    } catch (e) {
+      console.error('Failed to load messages:', e);
+    }
   }
 
   function setLoading(loading: boolean) {
@@ -381,6 +406,8 @@ export const useAIStore = defineStore('ai', () => {
     saveConfig,
     clearMessages,
     addMessage,
+    saveMessages,
+    loadMessages,
     setLoading,
     setError,
     loadSkills,

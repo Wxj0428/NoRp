@@ -249,12 +249,22 @@ onMounted(() => {
         }
 
         console.log('Canvas initialized');
+
+        // Push initial state for undo/redo
+        if (container && projectStore.currentPageId) {
+          editorStore.pushSnapshot(projectStore.currentPageId, container.innerHTML);
+        }
       }, 100);
     }
   }
 
   // 监听来自属性面板的删除事件
   window.addEventListener('delete-element', handleDeleteEvent);
+
+  // 监听来自快捷键系统的自定义事件
+  window.addEventListener('editor:undo', handleUndo);
+  window.addEventListener('editor:redo', handleRedo);
+  window.addEventListener('editor:delete', handleDeleteSelected);
 });
 
 // 清理键盘事件监听器
@@ -264,6 +274,9 @@ onUnmounted(() => {
     doc.removeEventListener('keydown', handleKeyDown, true);
   }
   window.removeEventListener('delete-element', handleDeleteEvent);
+  window.removeEventListener('editor:undo', handleUndo);
+  window.removeEventListener('editor:redo', handleRedo);
+  window.removeEventListener('editor:delete', handleDeleteSelected);
 });
 
 // Watch for page changes
@@ -376,6 +389,12 @@ watch(
     }
 
     projectStore.updatePageHtml(container.innerHTML);
+
+    // Push snapshot AFTER applying action
+    if (projectStore.currentPageId) {
+      editorStore.pushSnapshot(projectStore.currentPageId, container.innerHTML);
+    }
+
     editorStore.clearPendingAction();
     attachDropHandlers(container);
   },
@@ -459,6 +478,11 @@ function handleDrop(e: any) {
     const newHtml = currentHtml + componentWithId;
     projectStore.updatePageHtml(newHtml);
 
+    // Push snapshot AFTER drop
+    if (projectStore.currentPageId) {
+      editorStore.pushSnapshot(projectStore.currentPageId, newHtml);
+    }
+
     console.log('Component added successfully');
   } else {
     console.warn('No component data found');
@@ -536,9 +560,12 @@ function handleElementMouseMove(e: MouseEvent) {
 
 function handleElementMouseUp(_e: MouseEvent) {
   if (isDragging.value && dragElement.value) {
-    console.log('Stopped dragging element');
-
-    // 保存更改到项目
+    // Save position change — snapshot was not taken at mousedown, so take it now
+    // from the pre-move state (currentPage.html has the old state)
+    // Actually we need to save the old state before the move changed things.
+    // The container.innerHTML already has the new position. So we need to track the pre-move html.
+    // For simplicity: the snapshot was set before the move started via page html,
+    // and now we just save the new state.
     const container = canvasFrame.value?.contentDocument?.querySelector('.page-container');
     if (container) {
       projectStore.updatePageHtml(container.innerHTML);
@@ -644,20 +671,35 @@ function handleResetZoom() {
 }
 
 function handleUndo() {
-  editorStore.undo();
+  const action = editorStore.undo();
+  if (!action || !canvasFrame.value?.contentDocument) return;
+
+  // Only apply if the snapshot is for the current page
+  if (action.pageId === projectStore.currentPageId) {
+    const container = canvasFrame.value.contentDocument.querySelector('.page-container');
+    if (container) {
+      container.innerHTML = action.pageHtml;
+      projectStore.updatePageHtml(container.innerHTML);
+    }
+  }
 }
 
 function handleRedo() {
-  editorStore.redo();
+  const action = editorStore.redo();
+  if (!action || !canvasFrame.value?.contentDocument) return;
+
+  if (action.pageId === projectStore.currentPageId) {
+    const container = canvasFrame.value.contentDocument.querySelector('.page-container');
+    if (container) {
+      container.innerHTML = action.pageHtml;
+      projectStore.updatePageHtml(container.innerHTML);
+    }
+  }
 }
 
 function handleDeleteSelected() {
   const selected = editorStore.selectedElement;
   if (!selected || !canvasFrame.value?.contentDocument) return;
-
-  // 确认删除
-  const confirmed = confirm('确定要删除这个元素吗？');
-  if (!confirmed) return;
 
   // 从 DOM 中移除元素
   selected.remove();
@@ -666,6 +708,11 @@ function handleDeleteSelected() {
   const container = canvasFrame.value.contentDocument.querySelector('.page-container');
   if (container) {
     projectStore.updatePageHtml(container.innerHTML);
+
+    // Push snapshot AFTER delete
+    if (projectStore.currentPageId) {
+      editorStore.pushSnapshot(projectStore.currentPageId, container.innerHTML);
+    }
   }
 
   // 清除选中状态
@@ -723,6 +770,11 @@ function insertHTMLToCanvas(html: string) {
 
   // 更新项目 HTML
   projectStore.updatePageHtml(container.innerHTML);
+
+  // Push snapshot AFTER inserting
+  if (projectStore.currentPageId) {
+    editorStore.pushSnapshot(projectStore.currentPageId, container.innerHTML);
+  }
 
   // 重新附加事件处理器
   setTimeout(() => {

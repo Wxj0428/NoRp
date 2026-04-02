@@ -200,10 +200,9 @@ export interface SelectionState {
 }
 
 export interface HistoryAction {
-  type: 'add' | 'delete' | 'move' | 'resize' | 'style';
-  elementId: string;
-  before: any;
-  after: any;
+  type: 'snapshot';
+  pageHtml: string;
+  pageId: string;
   timestamp: Date;
 }
 

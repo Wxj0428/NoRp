@@ -3,114 +3,154 @@
     <div class="p-4 border-b border-gray-700 flex items-center justify-between">
       <h3 class="text-white font-semibold">图层</h3>
       <button
-        @click="refreshTree"
-        class="p-1 hover:bg-gray-700 rounded"
-        title="刷新"
+        @click="expandAll"
+        class="p-1 hover:bg-gray-700 rounded text-xs text-gray-400"
+        title="全部展开"
       >
-        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-          />
-        </svg>
+        展开
       </button>
     </div>
 
     <div class="p-2">
-      <div v-if="elements.length === 0" class="text-gray-500 text-sm p-4">
+      <div v-if="treeData.length === 0" class="text-gray-500 text-sm p-4">
         画布中没有元素
       </div>
-      <div v-else class="space-y-1">
-        <div
-          v-for="element in elements"
-          :key="element.id"
-          @click="selectElement(element)"
-          @mouseenter="hoverElement(element)"
-          @mouseleave="unhoverElement(element)"
-          :class="[
-            'flex items-center gap-2 px-2 py-1 rounded cursor-pointer text-sm',
-            'hover:bg-gray-700',
-            { 'bg-blue-600': isSelected(element) }
-          ]"
-        >
-          <span class="text-gray-400">
-            {{ getElementIcon(element.tagName) }}
-          </span>
-          <span :class="isSelected(element) ? 'text-white' : 'text-gray-300'">
-            {{ getElementLabel(element) }}
-          </span>
-        </div>
+      <div v-else class="space-y-0.5">
+        <LayerTreeNode
+          v-for="node in treeData"
+          :key="node.id"
+          :node="node"
+          :depth="0"
+          :selected-id="selectedElementId"
+          @select="handleSelect"
+          @toggle-visibility="handleToggleVisibility"
+        />
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useEditorStore } from '@/stores/editor';
+import { useProjectStore } from '@/stores/project';
+import LayerTreeNode from './LayerTreeNode.vue';
+
+interface TreeNode {
+  id: string;
+  tagName: string;
+  label: string;
+  element: HTMLElement;
+  children: TreeNode[];
+  visible: boolean;
+}
 
 const editorStore = useEditorStore();
+const projectStore = useProjectStore();
 
-const elements = ref<HTMLElement[]>([]);
+const treeData = ref<TreeNode[]>([]);
+const visibilityMap = ref(new Map<string, boolean>());
+let observer: MutationObserver | null = null;
+let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
-onMounted(() => {
-  refreshTree();
+const selectedElementId = computed(() => {
+  const el = editorStore.selectedElement;
+  if (!el) return '';
+  return (el as any).dataset?.elementId || el.id || '';
 });
+
+function generateNodeId(el: HTMLElement): string {
+  if (!el.id && !(el as any).dataset?.elementId) {
+    el.id = `node-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
+  }
+  return el.id;
+}
+
+function buildTree(parent: Element): TreeNode[] {
+  const children: TreeNode[] = [];
+  for (const child of Array.from(parent.children)) {
+    const el = child as HTMLElement;
+    if (el.nodeType !== 1) continue;
+    const nodeId = generateNodeId(el);
+    children.push({
+      id: nodeId,
+      tagName: el.tagName,
+      label: getElementLabel(el),
+      element: el,
+      children: buildTree(el),
+      visible: visibilityMap.value.get(nodeId) ?? true,
+    });
+  }
+  return children;
+}
 
 function refreshTree() {
   const frame = document.querySelector('.canvas-frame') as HTMLIFrameElement;
   if (frame?.contentDocument) {
     const container = frame.contentDocument.querySelector('.page-container');
     if (container) {
-      elements.value = Array.from(container.children) as HTMLElement[];
+      treeData.value = buildTree(container);
     }
   }
 }
 
-function selectElement(element: HTMLElement) {
-  editorStore.selectElement(element);
+function scheduleRefresh() {
+  if (debounceTimer) clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(refreshTree, 300);
 }
 
-function hoverElement(element: HTMLElement) {
-  element.classList.add('hovered');
+function setupObserver() {
+  const frame = document.querySelector('.canvas-frame') as HTMLIFrameElement;
+  if (!frame?.contentDocument) return;
+  const container = frame.contentDocument.querySelector('.page-container');
+  if (!container) return;
+  observer = new MutationObserver(() => scheduleRefresh());
+  observer.observe(container, { childList: true, subtree: true, attributes: true });
 }
 
-function unhoverElement(element: HTMLElement) {
-  element.classList.remove('hovered');
+function expandAll() {
+  refreshTree();
 }
 
-function isSelected(element: HTMLElement): boolean {
-  return editorStore.selectedElement === element;
+function handleSelect(node: TreeNode) {
+  editorStore.selectElement(node.element);
+  editorStore.updateSelectedElementInfo(node.element);
+  const frame = document.querySelector('.canvas-frame') as HTMLIFrameElement;
+  if (frame?.contentDocument) {
+    const prev = frame.contentDocument.querySelector('.selected');
+    if (prev) prev.classList.remove('selected');
+    node.element.classList.add('selected');
+  }
 }
 
-function getElementIcon(tagName: string): string {
-  const icons: Record<string, string> = {
-    DIV: '▢',
-    BUTTON: '⚙',
-    INPUT: '⌨',
-    IMG: '🖼',
-    P: '¶',
-    H1: 'H₁',
-    H2: 'H₂',
-    H3: 'H₃',
-    SPAN: 'a',
-    A: '🔗'
-  };
-  return icons[tagName] || '◻';
+function handleToggleVisibility(node: TreeNode) {
+  const newVisible = !node.visible;
+  visibilityMap.value.set(node.id, newVisible);
+  visibilityMap.value = new Map(visibilityMap.value);
+  node.element.style.display = newVisible ? '' : 'none';
+  refreshTree();
 }
 
 function getElementLabel(element: HTMLElement): string {
-  if (element.id) {
-    return `#${element.id}`;
-  }
-  if (element.className) {
-    const classes = typeof element.className === 'string'
-      ? element.className.split(' ')[0]
-      : '';
-    return `.${classes}`;
-  }
+  if (element.id && !element.id.startsWith('node-')) return `#${element.id}`;
+  const cls = typeof element.className === 'string' ? element.className.trim().split(/\s+/).find(c => c && c !== 'selected' && c !== 'hovered' && c !== 'page-container') : '';
+  if (cls) return `.${cls}`;
+  const text = element.textContent?.trim().substring(0, 30);
+  if (text && element.children.length === 0) return text;
   return element.tagName.toLowerCase();
 }
+
+watch(() => projectStore.currentPageId, () => {
+  if (observer) observer.disconnect();
+  setTimeout(() => { refreshTree(); setupObserver(); }, 200);
+});
+
+onMounted(() => {
+  setTimeout(() => { refreshTree(); setupObserver(); }, 300);
+});
+
+onUnmounted(() => {
+  if (observer) observer.disconnect();
+  if (debounceTimer) clearTimeout(debounceTimer);
+});
 </script>

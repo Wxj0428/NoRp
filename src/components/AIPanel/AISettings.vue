@@ -1,288 +1,276 @@
 <template>
-  <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-    <div class="bg-gray-800 rounded-lg shadow-xl w-[500px] max-h-[80vh] overflow-hidden flex flex-col">
-      <!-- Header -->
-      <div class="p-4 border-b border-gray-700 flex items-center justify-between">
-        <h2 class="text-white text-lg font-semibold">AI 设置</h2>
-        <button @click="$emit('close')" class="p-1 hover:bg-gray-700 rounded">
-          <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
+  <AppModal :visible="true" title="AI 设置" @close="$emit('close')">
+    <div class="p-4 space-y-4">
+      <!-- Provider Selection -->
+      <div>
+        <label class="block text-sm font-medium text-gray-300 mb-2">AI 提供商</label>
+        <select
+          v-model="localConfig.provider"
+          @change="handleProviderChange"
+          class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white"
+        >
+          <option value="claude">Claude (Anthropic)</option>
+          <option value="openai">OpenAI (GPT-4/GPT-3.5)</option>
+          <option value="local">Local Model (Ollama)</option>
+          <option value="custom">Custom API</option>
+        </select>
       </div>
 
-      <!-- Content -->
-      <div class="flex-1 overflow-y-auto p-4 space-y-4">
-        <!-- Provider Selection -->
-        <div>
-          <label class="block text-sm font-medium text-gray-300 mb-2">AI 提供商</label>
-          <select
-            v-model="localConfig.provider"
-            @change="handleProviderChange"
-            class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white"
-          >
-            <option value="claude">Claude (Anthropic)</option>
-            <option value="openai">OpenAI (GPT-4/GPT-3.5)</option>
-            <option value="local">Local Model (Ollama)</option>
-            <option value="custom">Custom API</option>
-          </select>
-        </div>
-
-        <!-- API Key -->
-        <div v-if="localConfig.provider !== 'local'">
-          <label class="block text-sm font-medium text-gray-300 mb-2">API 密钥</label>
-          <div class="relative">
-            <input
-              v-model="localConfig.apiKey"
-              :type="showApiKey ? 'text' : 'password'"
-              placeholder="请输入您的 API 密钥"
-              class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white pr-10"
-            />
-            <button
-              @click="showApiKey = !showApiKey"
-              class="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-700 rounded"
-            >
-              <svg v-if="showApiKey" class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-              </svg>
-              <svg v-else class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-              </svg>
-            </button>
-          </div>
-          <p v-if="localConfig.provider === 'claude'" class="text-xs text-gray-500 mt-1">
-            从 <a href="https://console.anthropic.com" target="_blank" class="text-blue-400 hover:underline">console.anthropic.com</a> 获取 API 密钥
-          </p>
-          <p v-else-if="localConfig.provider === 'openai'" class="text-xs text-gray-500 mt-1">
-            从 <a href="https://platform.openai.com/api-keys" target="_blank" class="text-blue-400 hover:underline">platform.openai.com</a> 获取 API 密钥
-          </p>
-        </div>
-
-        <!-- Base URL (for custom/local) -->
-        <div v-if="localConfig.provider === 'local' || localConfig.provider === 'custom'">
-          <label class="block text-sm font-medium text-gray-300 mb-2">服务器地址</label>
+      <!-- API Key -->
+      <div v-if="localConfig.provider !== 'local'">
+        <label class="block text-sm font-medium text-gray-300 mb-2">API 密钥</label>
+        <div class="relative">
           <input
-            v-model="localConfig.baseURL"
-            :placeholder="localConfig.provider === 'local' ? 'http://localhost:11434' : 'https://api.example.com'"
-            class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white"
+            v-model="localConfig.apiKey"
+            :type="showApiKey ? 'text' : 'password'"
+            placeholder="请输入您的 API 密钥"
+            class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white pr-10"
           />
-          <p v-if="localConfig.provider === 'local'" class="text-xs text-gray-500 mt-1">
-            默认 Ollama 地址: http://localhost:11434
-          </p>
-        </div>
-
-        <!-- Model Selection -->
-        <div>
-          <label class="block text-sm font-medium text-gray-300 mb-2">模型</label>
-          <input
-            v-model="localConfig.model"
-            :placeholder="getDefaultModel()"
-            class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white"
-          />
-          <p class="text-xs text-gray-500 mt-1">
-            {{ getModelDescription() }}
-          </p>
-        </div>
-
-        <!-- Temperature -->
-        <div>
-          <label class="block text-sm font-medium text-gray-300 mb-2">
-            温度: {{ localConfig.temperature }}
-          </label>
-          <input
-            v-model.number="localConfig.temperature"
-            type="range"
-            min="0"
-            max="1"
-            step="0.1"
-            class="w-full"
-          />
-          <div class="flex justify-between text-xs text-gray-500">
-            <span>精确 (0)</span>
-            <span>创造性 (1)</span>
-          </div>
-        </div>
-
-        <!-- Max Tokens -->
-        <div>
-          <label class="block text-sm font-medium text-gray-300 mb-2">最大令牌数</label>
-          <input
-            v-model.number="localConfig.maxTokens"
-            type="number"
-            min="100"
-            max="32000"
-            step="100"
-            class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white"
-          />
-        </div>
-
-        <!-- Agent Settings -->
-        <div class="border-t border-gray-700 pt-4">
-          <label class="block text-sm font-medium text-gray-300 mb-3">Agent 设置</label>
-
-          <!-- Enable Tool Calling -->
-          <div class="flex items-center justify-between mb-3">
-            <div>
-              <div class="text-sm text-white">启用工具调用</div>
-              <div class="text-xs text-gray-500">AI 可以主动读取/修改页面，多轮自主迭代完成任务</div>
-            </div>
-            <button
-              @click="localConfig.enableToolCalling = !localConfig.enableToolCalling"
-              :class="[
-                'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
-                localConfig.enableToolCalling !== false ? 'bg-blue-600' : 'bg-gray-600'
-              ]"
-            >
-              <span
-                :class="[
-                  'inline-block h-4 w-4 transform rounded-full bg-white transition-transform',
-                  localConfig.enableToolCalling !== false ? 'translate-x-6' : 'translate-x-1'
-                ]"
-              />
-            </button>
-          </div>
-
-          <!-- Max Iterations -->
-          <div v-if="localConfig.enableToolCalling !== false">
-            <label class="block text-xs text-gray-400 mb-1">最大迭代次数</label>
-            <input
-              v-model.number="localConfig.maxAgentIterations"
-              type="number"
-              min="1"
-              max="20"
-              class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-white text-sm"
-            />
-            <p class="text-xs text-gray-500 mt-1">Agent 在单次请求中的最大工具调用轮数（1-20，默认10）</p>
-          </div>
-        </div>
-
-        <!-- Skills Management -->
-        <div class="border-t border-gray-700 pt-4">
-          <div class="flex items-center justify-between mb-3">
-            <label class="text-sm font-medium text-gray-300">Skills 管理</label>
-            <button
-              @click="showAddSkill = !showAddSkill"
-              class="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded transition"
-            >
-              {{ showAddSkill ? '收起' : '+ 添加 Skill' }}
-            </button>
-          </div>
-
-          <!-- Add Skill Form -->
-          <div v-if="showAddSkill" class="mb-3 p-3 bg-gray-900 rounded space-y-2">
-            <div class="flex gap-2">
-              <input
-                v-model="newSkill.icon"
-                placeholder="图标"
-                class="w-16 bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-white text-sm text-center focus:outline-none focus:border-blue-500"
-              />
-              <input
-                v-model="newSkill.name"
-                placeholder="Skill 名称"
-                class="flex-1 bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500"
-              />
-            </div>
-            <textarea
-              v-model="newSkill.systemPrompt"
-              placeholder="系统提示词 — 定义 AI 的专业知识和能力（这是 Skill 的核心，描述越详细 AI 表现越好）"
-              rows="5"
-              class="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-white text-sm resize-none focus:outline-none focus:border-blue-500"
-            ></textarea>
-            <button
-              @click="addSkill"
-              :disabled="!newSkill.name.trim() || !newSkill.systemPrompt.trim()"
-              class="w-full px-3 py-1.5 bg-green-600 hover:bg-green-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white text-sm rounded transition"
-            >
-              确认添加
-            </button>
-          </div>
-
-          <!-- Skills List -->
-          <div class="space-y-1.5">
-            <div
-              v-for="skill in aiStore.skills"
-              :key="skill.id"
-              class="flex items-center justify-between px-3 py-2 bg-gray-900 rounded"
-            >
-              <div class="flex items-center gap-2 min-w-0 flex-1">
-                <span class="text-lg">{{ skill.icon }}</span>
-                <div class="min-w-0">
-                  <div class="text-sm text-white truncate">{{ skill.name }}</div>
-                  <div class="text-xs text-gray-500 truncate">{{ skill.systemPrompt.substring(0, 60) }}...</div>
-                </div>
-              </div>
-              <button
-                v-if="!skill.isDefault"
-                @click="aiStore.deleteSkill(skill.id)"
-                class="ml-2 p-1 text-red-400 hover:text-red-300 hover:bg-gray-800 rounded transition flex-shrink-0"
-                title="删除"
-              >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              </button>
-              <span v-else class="ml-2 text-xs text-gray-600 flex-shrink-0">内置</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Status -->
-        <div v-if="error" class="p-3 bg-red-900 bg-opacity-30 border border-red-700 rounded">
-          <p class="text-sm text-red-300">{{ error }}</p>
-        </div>
-
-        <div v-else-if="localConfig.apiKey" class="p-3 bg-green-900 bg-opacity-30 border border-green-700 rounded">
-          <p class="text-sm text-green-300">✓ 配置就绪</p>
-        </div>
-
-        <!-- Test Connection -->
-        <div class="p-4 bg-gray-900 rounded border border-gray-700">
           <button
-            @click="testConnection"
-            :disabled="testing || !localConfig.apiKey"
-            class="w-full px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white rounded transition flex items-center justify-center gap-2"
+            @click="showApiKey = !showApiKey"
+            class="absolute right-2 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-700 rounded"
           >
-            <svg v-if="!testing" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+            <svg v-if="showApiKey" class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
             </svg>
-            <svg v-else class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            <svg v-else class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
             </svg>
-            <span>{{ testing ? '测试中...' : '测试 AI 连接' }}</span>
           </button>
-          <div v-if="testResult" class="mt-3 text-sm" :class="testResult.success ? 'text-green-400' : 'text-red-400'">
-            {{ testResult.message }}
-          </div>
-          <p class="text-xs text-gray-500 mt-2">
-            💡 提示：发送简单消息测试连接是否正常
-          </p>
+        </div>
+        <p v-if="localConfig.provider === 'claude'" class="text-xs text-gray-500 mt-1">
+          从 <a href="https://console.anthropic.com" target="_blank" class="text-blue-400 hover:underline">console.anthropic.com</a> 获取 API 密钥
+        </p>
+        <p v-else-if="localConfig.provider === 'openai'" class="text-xs text-gray-500 mt-1">
+          从 <a href="https://platform.openai.com/api-keys" target="_blank" class="text-blue-400 hover:underline">platform.openai.com</a> 获取 API 密钥
+        </p>
+      </div>
+
+      <!-- Base URL (for custom/local) -->
+      <div v-if="localConfig.provider === 'local' || localConfig.provider === 'custom'">
+        <label class="block text-sm font-medium text-gray-300 mb-2">服务器地址</label>
+        <input
+          v-model="localConfig.baseURL"
+          :placeholder="localConfig.provider === 'local' ? 'http://localhost:11434' : 'https://api.example.com'"
+          class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white"
+        />
+        <p v-if="localConfig.provider === 'local'" class="text-xs text-gray-500 mt-1">
+          默认 Ollama 地址: http://localhost:11434
+        </p>
+      </div>
+
+      <!-- Model Selection -->
+      <div>
+        <label class="block text-sm font-medium text-gray-300 mb-2">模型</label>
+        <input
+          v-model="localConfig.model"
+          :placeholder="getDefaultModel()"
+          class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white"
+        />
+        <p class="text-xs text-gray-500 mt-1">
+          {{ getModelDescription() }}
+        </p>
+      </div>
+
+      <!-- Temperature -->
+      <div>
+        <label class="block text-sm font-medium text-gray-300 mb-2">
+          温度: {{ localConfig.temperature }}
+        </label>
+        <input
+          v-model.number="localConfig.temperature"
+          type="range"
+          min="0"
+          max="1"
+          step="0.1"
+          class="w-full"
+        />
+        <div class="flex justify-between text-xs text-gray-500">
+          <span>精确 (0)</span>
+          <span>创造性 (1)</span>
         </div>
       </div>
 
-      <!-- Footer -->
-      <div class="p-4 border-t border-gray-700 flex justify-end gap-2">
+      <!-- Max Tokens -->
+      <div>
+        <label class="block text-sm font-medium text-gray-300 mb-2">最大令牌数</label>
+        <input
+          v-model.number="localConfig.maxTokens"
+          type="number"
+          min="100"
+          max="32000"
+          step="100"
+          class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-2 text-white"
+        />
+      </div>
+
+      <!-- Agent Settings -->
+      <div class="border-t border-gray-700 pt-4">
+        <label class="block text-sm font-medium text-gray-300 mb-3">Agent 设置</label>
+
+        <!-- Enable Tool Calling -->
+        <div class="flex items-center justify-between mb-3">
+          <div>
+            <div class="text-sm text-white">启用工具调用</div>
+            <div class="text-xs text-gray-500">AI 可以主动读取/修改页面，多轮自主迭代完成任务</div>
+          </div>
+          <button
+            @click="localConfig.enableToolCalling = !localConfig.enableToolCalling"
+            :class="[
+              'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
+              localConfig.enableToolCalling !== false ? 'bg-blue-600' : 'bg-gray-600'
+            ]"
+          >
+            <span
+              :class="[
+                'inline-block h-4 w-4 transform rounded-full bg-white transition-transform',
+                localConfig.enableToolCalling !== false ? 'translate-x-6' : 'translate-x-1'
+              ]"
+            />
+          </button>
+        </div>
+
+        <!-- Max Iterations -->
+        <div v-if="localConfig.enableToolCalling !== false">
+          <label class="block text-xs text-gray-400 mb-1">最大迭代次数</label>
+          <input
+            v-model.number="localConfig.maxAgentIterations"
+            type="number"
+            min="1"
+            max="20"
+            class="w-full bg-gray-900 border border-gray-700 rounded px-3 py-1.5 text-white text-sm"
+          />
+          <p class="text-xs text-gray-500 mt-1">Agent 在单次请求中的最大工具调用轮数（1-20，默认10）</p>
+        </div>
+      </div>
+
+      <!-- Skills Management -->
+      <div class="border-t border-gray-700 pt-4">
+        <div class="flex items-center justify-between mb-3">
+          <label class="text-sm font-medium text-gray-300">Skills 管理</label>
+          <button
+            @click="showAddSkill = !showAddSkill"
+            class="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded transition"
+          >
+            {{ showAddSkill ? '收起' : '+ 添加 Skill' }}
+          </button>
+        </div>
+
+        <!-- Add Skill Form -->
+        <div v-if="showAddSkill" class="mb-3 p-3 bg-gray-900 rounded space-y-2">
+          <div class="flex gap-2">
+            <input
+              v-model="newSkill.icon"
+              placeholder="图标"
+              class="w-16 bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-white text-sm text-center focus:outline-none focus:border-blue-500"
+            />
+            <input
+              v-model="newSkill.name"
+              placeholder="Skill 名称"
+              class="flex-1 bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-white text-sm focus:outline-none focus:border-blue-500"
+            />
+          </div>
+          <textarea
+            v-model="newSkill.systemPrompt"
+            placeholder="系统提示词 — 定义 AI 的专业知识和能力（这是 Skill 的核心，描述越详细 AI 表现越好）"
+            rows="5"
+            class="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-white text-sm resize-none focus:outline-none focus:border-blue-500"
+          ></textarea>
+          <button
+            @click="addSkill"
+            :disabled="!newSkill.name.trim() || !newSkill.systemPrompt.trim()"
+            class="w-full px-3 py-1.5 bg-green-600 hover:bg-green-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white text-sm rounded transition"
+          >
+            确认添加
+          </button>
+        </div>
+
+        <!-- Skills List -->
+        <div class="space-y-1.5">
+          <div
+            v-for="skill in aiStore.skills"
+            :key="skill.id"
+            class="flex items-center justify-between px-3 py-2 bg-gray-900 rounded"
+          >
+            <div class="flex items-center gap-2 min-w-0 flex-1">
+              <span class="text-lg">{{ skill.icon }}</span>
+              <div class="min-w-0">
+                <div class="text-sm text-white truncate">{{ skill.name }}</div>
+                <div class="text-xs text-gray-500 truncate">{{ skill.systemPrompt.substring(0, 60) }}...</div>
+              </div>
+            </div>
+            <button
+              v-if="!skill.isDefault"
+              @click="aiStore.deleteSkill(skill.id)"
+              class="ml-2 p-1 text-red-400 hover:text-red-300 hover:bg-gray-800 rounded transition flex-shrink-0"
+              title="删除"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+            <span v-else class="ml-2 text-xs text-gray-600 flex-shrink-0">内置</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Status -->
+      <div v-if="error" class="p-3 bg-red-900 bg-opacity-30 border border-red-700 rounded">
+        <p class="text-sm text-red-300">{{ error }}</p>
+      </div>
+
+      <div v-else-if="localConfig.apiKey" class="p-3 bg-green-900 bg-opacity-30 border border-green-700 rounded">
+        <p class="text-sm text-green-300">✓ 配置就绪</p>
+      </div>
+
+      <!-- Test Connection -->
+      <div class="p-4 bg-gray-900 rounded border border-gray-700">
         <button
-          @click="$emit('close')"
-          class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded transition"
+          @click="testConnection"
+          :disabled="testing || !localConfig.apiKey"
+          class="w-full px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white rounded transition flex items-center justify-center gap-2"
         >
-          取消
+          <svg v-if="!testing" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+          <svg v-else class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          <span>{{ testing ? '测试中...' : '测试 AI 连接' }}</span>
         </button>
-        <button
-          @click="saveSettings"
-          class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition"
-        >
-          保存设置
-        </button>
+        <div v-if="testResult" class="mt-3 text-sm" :class="testResult.success ? 'text-green-400' : 'text-red-400'">
+          {{ testResult.message }}
+        </div>
+        <p class="text-xs text-gray-500 mt-2">
+          💡 提示：发送简单消息测试连接是否正常
+        </p>
       </div>
     </div>
-  </div>
+
+    <!-- Footer -->
+    <template #footer>
+      <button
+        @click="$emit('close')"
+        class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded transition"
+      >
+        取消
+      </button>
+      <button
+        @click="saveSettings"
+        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded transition"
+      >
+        保存设置
+      </button>
+    </template>
+  </AppModal>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useAIStore } from '@/stores/ai';
 import { createAIService } from '@/services/ai';
+import AppModal from '@/components/common/AppModal.vue';
 import type { AIServiceConfig } from '@/types';
 
 const emit = defineEmits<{

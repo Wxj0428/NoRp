@@ -276,7 +276,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick } from 'vue';
+import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue';
 import { useProjectStore } from '@/stores/project';
 import { useAIStore } from '@/stores/ai';
 import { useEditorStore } from '@/stores/editor';
@@ -361,8 +361,10 @@ function cancelRename() {
 
 // Duplicate page
 function duplicatePage(page: any) {
-  projectStore.addPage(`${page.name} 副本`);
-  // TODO: Copy page content
+  projectStore.addPage(`${page.name} 副本`, {
+    html: page.html,
+    description: page.description
+  });
 }
 
 // Delete page
@@ -698,9 +700,17 @@ function extractHtmlFromText(text: string): string | null {
 }
 
 // Close context menu on click outside
-document.addEventListener('click', () => {
+function handleDocumentClick() {
   if (contextMenu.value.show) {
     closeContextMenu();
   }
+}
+
+onMounted(() => {
+  document.addEventListener('click', handleDocumentClick);
+});
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleDocumentClick);
 });
 </script>
