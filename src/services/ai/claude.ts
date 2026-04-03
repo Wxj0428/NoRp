@@ -39,7 +39,7 @@ export class ClaudeService extends BaseAIService {
     try {
       const message = await this.client.messages.create({
         model: this.config.model || 'claude-3-5-sonnet-20241022',
-        max_tokens: this.config.maxTokens || 4096,
+        max_tokens: this.config.maxTokens || 16384,
         system: systemPrompt,
         messages: [
           {
@@ -85,7 +85,7 @@ export class ClaudeService extends BaseAIService {
     try {
       const stream = await this.client.messages.create({
         model: this.config.model || 'claude-3-5-sonnet-20241022',
-        max_tokens: this.config.maxTokens || 4096,
+        max_tokens: this.config.maxTokens || 16384,
         messages: claudeMessages,
         temperature: this.config.temperature || 0.7,
         stream: true
@@ -118,7 +118,7 @@ export class ClaudeService extends BaseAIService {
     try {
       const stream = await this.client.messages.create({
         model: this.config.model || 'claude-3-5-sonnet-20241022',
-        max_tokens: this.config.maxTokens || 4096,
+        max_tokens: this.config.maxTokens || 16384,
         system: systemMessages,
         messages: claudeMessages,
         tools: claudeTools,
@@ -128,6 +128,7 @@ export class ClaudeService extends BaseAIService {
 
       const toolCallAccumulators = new Map<string, { id: string; name: string; jsonParts: string[] }>();
       let currentToolId = '';
+      let actualStopReason: string = 'end_turn';
 
       for await (const event of stream) {
         // 文本内容
@@ -170,16 +171,21 @@ export class ClaudeService extends BaseAIService {
           }
         }
 
-        // 流结束
-        if (event.type === 'message_stop') {
-          // stop_reason is on the message event
+        // 捕获实际 stop_reason (message_delta 事件中包含)
+        if (event.type === 'message_delta' && event.delta?.stop_reason) {
+          actualStopReason = event.delta.stop_reason;
         }
       }
 
-      // We need stop_reason from the final message
-      // Since we stream, we detect based on whether tool calls were emitted
-      // The message_delta event has stop_reason
-      yield { type: 'done', stopReason: 'end_turn' };
+      // 映射 Claude stop_reason 到统一的 stopReason
+      let stopReason: 'end_turn' | 'tool_use' | 'max_tokens' = 'end_turn';
+      if (actualStopReason === 'tool_use') {
+        stopReason = 'tool_use';
+      } else if (actualStopReason === 'max_tokens') {
+        stopReason = 'max_tokens';
+      }
+
+      yield { type: 'done', stopReason };
     } catch (error) {
       if (error instanceof Error) {
         throw new Error(`Claude tool calling error: ${error.message}`);

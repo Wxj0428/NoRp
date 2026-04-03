@@ -276,7 +276,7 @@ const localSettings = ref({
   defaultProjectPath: '',
   autoBackup: true,
   defaultAIProvider: 'claude',
-  maxTokens: 4096,
+  maxTokens: 16384,
   temperature: 0.7
 });
 
@@ -338,7 +338,7 @@ function handleReset() {
       defaultProjectPath: '',
       autoBackup: true,
       defaultAIProvider: 'claude',
-      maxTokens: 4096,
+      maxTokens: 16384,
       temperature: 0.7
     };
   }

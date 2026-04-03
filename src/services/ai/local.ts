@@ -42,7 +42,7 @@ export class LocalAIService extends BaseAIService {
           stream: false,
           options: {
             temperature: this.config.temperature || 0.7,
-            num_predict: this.config.maxTokens || 4096
+            num_predict: this.config.maxTokens || 16384
           }
         })
       });
@@ -94,7 +94,7 @@ export class LocalAIService extends BaseAIService {
           stream: true,
           options: {
             temperature: this.config.temperature || 0.7,
-            num_predict: this.config.maxTokens || 4096
+            num_predict: this.config.maxTokens || 16384
           }
         })
       });
@@ -156,7 +156,7 @@ export class LocalAIService extends BaseAIService {
           stream: true,
           options: {
             temperature: this.config.temperature || 0.7,
-            num_predict: this.config.maxTokens || 4096,
+            num_predict: this.config.maxTokens || 16384,
           },
         }),
       });

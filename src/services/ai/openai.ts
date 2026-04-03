@@ -61,7 +61,7 @@ export class OpenAIService extends BaseAIService {
           }
         ],
         temperature: this.config.temperature || 0.7,
-        max_tokens: this.config.maxTokens || 4096
+        max_tokens: this.config.maxTokens || 16384
       });
 
       const responseText = response.choices[0]?.message?.content || '';
@@ -94,7 +94,7 @@ export class OpenAIService extends BaseAIService {
         model: this.config.model || 'gpt-4',
         messages: openaiMessages,
         temperature: this.config.temperature || 0.7,
-        max_tokens: this.config.maxTokens || 4096,
+        max_tokens: this.config.maxTokens || 16384,
         stream: true
       });
 
@@ -129,7 +129,7 @@ export class OpenAIService extends BaseAIService {
         messages: openaiMessages,
         tools: openaiTools,
         temperature: this.config.temperature || 0.7,
-        max_tokens: this.config.maxTokens || 4096,
+        max_tokens: this.config.maxTokens || 16384,
         stream: true,
       }, {
         timeout: 120000, // 2 minute timeout
@@ -185,9 +185,17 @@ export class OpenAIService extends BaseAIService {
         };
       }
 
+      // Map OpenAI finish reasons to our unified stopReason
+      let mappedStopReason: 'end_turn' | 'tool_use' | 'max_tokens' = 'end_turn';
+      if (stopReason === 'tool_calls') {
+        mappedStopReason = 'tool_use';
+      } else if (stopReason === 'length') {
+        mappedStopReason = 'max_tokens';
+      }
+
       yield {
         type: 'done',
-        stopReason: stopReason === 'tool_calls' ? 'tool_use' : 'end_turn',
+        stopReason: mappedStopReason,
       };
     } catch (error) {
       if (error instanceof Error) {

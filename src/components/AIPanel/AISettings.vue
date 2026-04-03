@@ -285,7 +285,7 @@ const localConfig = ref<AIServiceConfig>({
   baseURL: '',
   model: '',
   temperature: 0.7,
-  maxTokens: 4096,
+  maxTokens: 16384,
   enableToolCalling: true,
   maxAgentIterations: 10,
 });

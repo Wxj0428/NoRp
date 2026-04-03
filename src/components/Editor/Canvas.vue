@@ -299,15 +299,41 @@ watch(
   }
 );
 
-// Extract body content from a full HTML document, or return as-is
+// Extract body content from a full HTML document, preserving <style> and <link> from <head>
 function extractBodyContent(html: string): string {
+  // Try to match body tag
   const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
-  if (bodyMatch) return bodyMatch[1].trim();
+
+  // Collect <style> and <link rel="stylesheet"> from <head> or anywhere in the document
+  const preservedTags: string[] = [];
+  const styleRegex = /<style[^>]*>[\s\S]*?<\/style>/gi;
+  let m;
+  while ((m = styleRegex.exec(html)) !== null) {
+    preservedTags.push(m[0].trim());
+  }
+  const linkRegex = /<link[^>]*rel=["']stylesheet["'][^>]*>/gi;
+  while ((m = linkRegex.exec(html)) !== null) {
+    preservedTags.push(m[0].trim());
+  }
+
+  if (bodyMatch) {
+    const bodyContent = bodyMatch[1].trim();
+    // Prepend <style>/<link> tags to body content so they apply in iframe
+    if (preservedTags.length > 0) {
+      return preservedTags.join('\n') + '\n' + bodyContent;
+    }
+    return bodyContent;
+  }
+
   // If no <body> tag, check if it has <html> wrapper
   if (/<html/i.test(html) && !/<body/i.test(html)) {
-    // Full HTML doc without body — just strip html/head tags
-    return html.replace(/<\/?html[^>]*>/gi, '').replace(/<head[\s\S]*?<\/head>/gi, '').trim();
+    // Full HTML doc without body — strip html/head tags but preserve <style>
+    let stripped = html.replace(/<\/?html[^>]*>/gi, '').replace(/<\/?head[^>]*>/gi, '').replace(/<\/?body[^>]*>/gi, '').trim();
+    // Remove <title>, <meta>, <script> tags but keep <style> and <link>
+    stripped = stripped.replace(/<title[^>]*>[\s\S]*?<\/title>/gi, '').replace(/<meta[^>]*?>/gi, '').replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
+    return stripped;
   }
+
   return html;
 }
 

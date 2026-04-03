@@ -7,7 +7,7 @@ export interface AgentCallbacks {
   onToolCallStart: (toolCall: { id: string; name: string; arguments: Record<string, any> }) => void;
   onToolCallResult: (toolResult: ToolResult) => void;
   onIterationStart: (iteration: number, maxIterations: number) => void;
-  onComplete: (finalText: string) => void;
+  onComplete: (finalText: string, wasTruncated: boolean) => void;
   onError: (error: Error) => void;
 }
 
@@ -39,12 +39,13 @@ export class Agent {
     callbacks: AgentCallbacks
   ): Promise<void> {
     let iteration = 0;
+    let wasTruncated = false;
 
     try {
       while (iteration < this.maxIterations) {
         // 检查是否被取消
         if (this.signal?.aborted) {
-          callbacks.onComplete('');
+          callbacks.onComplete('', false);
           return;
         }
 
@@ -59,7 +60,7 @@ export class Agent {
         try {
           for await (const event of this.aiService.chatWithTools(messages, tools)) {
             if (this.signal?.aborted) {
-              callbacks.onComplete(accumulatedText);
+              callbacks.onComplete(accumulatedText, wasTruncated);
               return;
             }
 
@@ -85,7 +86,7 @@ export class Agent {
         } catch (error) {
           // Provider 不支持工具调用，回退到纯文本模式
           if (iteration === 1 && toolCalls.length === 0) {
-            callbacks.onComplete(accumulatedText);
+            callbacks.onComplete(accumulatedText, wasTruncated);
             return;
           }
           throw error;
@@ -101,16 +102,21 @@ export class Agent {
         }
         messages.push(assistantMessage);
 
+        // 检测截断
+        if (stopReason === 'max_tokens') {
+          wasTruncated = true;
+        }
+
         // 如果没有工具调用或 stopReason 不是 tool_use → 任务完成
         if (toolCalls.length === 0 || stopReason !== 'tool_use') {
-          callbacks.onComplete(accumulatedText);
+          callbacks.onComplete(accumulatedText, wasTruncated);
           return;
         }
 
         // 执行每个工具调用
         for (const toolCall of toolCalls) {
           if (this.signal?.aborted) {
-            callbacks.onComplete(accumulatedText);
+            callbacks.onComplete(accumulatedText, wasTruncated);
             return;
           }
 
@@ -130,7 +136,7 @@ export class Agent {
       }
 
       // 达到最大迭代次数
-      callbacks.onComplete('');
+      callbacks.onComplete('', wasTruncated);
     } catch (error) {
       callbacks.onError(error instanceof Error ? error : new Error(String(error)));
     }

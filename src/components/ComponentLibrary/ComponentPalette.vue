@@ -5,9 +5,15 @@
     </div>
 
     <div class="flex-1 overflow-y-auto p-2">
-      <div v-for="(components, category) in categorizedComponents" :key="category" class="mb-4">
-        <h4 class="text-xs text-gray-400 uppercase tracking-wide mb-2 px-2">{{ category }}</h4>
-        <div class="grid grid-cols-2 gap-2">
+      <div v-for="(components, category) in categorizedComponents" :key="category" class="mb-2">
+        <button
+          @click="toggleCategory(category)"
+          class="w-full flex items-center justify-between px-2 py-1 text-xs text-gray-400 uppercase tracking-wide hover:text-gray-200 transition"
+        >
+          <span>{{ category }} ({{ components.length }})</span>
+          <span class="text-[10px] transition-transform duration-200" :style="{ transform: collapsedCategories.has(category) ? 'rotate(-90deg)' : 'rotate(0deg)' }">&#9660;</span>
+        </button>
+        <div v-show="!collapsedCategories.has(category)" class="grid grid-cols-2 gap-2 mt-1">
           <div
             v-for="component in components"
             :key="component.id"
@@ -27,6 +33,16 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import type { Component } from '@/types';
+
+const collapsedCategories = ref(new Set<string>());
+
+function toggleCategory(category: string) {
+  if (collapsedCategories.value.has(category)) {
+    collapsedCategories.value.delete(category);
+  } else {
+    collapsedCategories.value.add(category);
+  }
+}
 
 const components = ref<Component[]>([
   // 按钮

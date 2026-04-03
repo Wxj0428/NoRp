@@ -30,3 +30,4 @@ workspace/*
 # Build
 build/
 .claude/settings.local.json
+/.playwright-mcp/*

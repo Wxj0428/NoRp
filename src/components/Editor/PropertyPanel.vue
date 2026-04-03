@@ -23,6 +23,18 @@
         </div>
       </div>
 
+      <!-- Text Content -->
+      <div v-if="isTextEditable" class="space-y-2">
+        <label class="text-xs text-gray-400 uppercase tracking-wide">文本内容</label>
+        <textarea
+          v-model="textContent"
+          @input="updateTextContent"
+          rows="3"
+          class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white resize-none focus:outline-none focus:border-blue-500"
+          :placeholder="'输入文本内容...'"
+        ></textarea>
+      </div>
+
       <!-- Layout -->
       <div class="space-y-2">
         <label class="text-xs text-gray-400 uppercase tracking-wide">布局</label>
@@ -544,6 +556,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import { useEditorStore } from '@/stores/editor';
+import { useProjectStore } from '@/stores/project';
 import { useToastStore } from '@/stores/toast';
 
 const editorStore = useEditorStore();
@@ -565,6 +578,16 @@ const isInputElement = computed(() => {
   const tag = selectedElement.value?.tagName?.toLowerCase();
   return tag === 'input' || tag === 'textarea';
 });
+
+const isTextEditable = computed(() => {
+  const tag = selectedElement.value?.tagName?.toLowerCase();
+  if (!tag) return false;
+  // 可编辑文本内容的元素
+  const textTags = ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'span', 'a', 'button', 'label', 'li', 'td', 'th', 'div', 'figcaption', 'blockquote', 'strong', 'em', 'b', 'i', 'small', 'sub', 'sup'];
+  return textTags.includes(tag);
+});
+
+const textContent = ref('');
 
 const styles = ref<Record<string, string>>({
   width: '',
@@ -659,6 +682,12 @@ watch(
         alt: element.getAttribute('alt') || '',
         placeholder: element.getAttribute('placeholder') || '',
       };
+      // Read text content (only for direct text, not child elements)
+      if (element.children.length === 0) {
+        textContent.value = element.textContent || '';
+      } else {
+        textContent.value = '';
+      }
     }
   },
   { immediate: true }
@@ -674,12 +703,30 @@ function updateStyle() {
   const styleUpdates: Record<string, string> = {};
   for (const [key, value] of Object.entries(s)) {
     if (!value) continue; // Skip empty values
-    // Convert camelCase keys to CSS property names
     const cssKey = key.replace(/([A-Z])/g, '-$1').toLowerCase();
     styleUpdates[key] = value;
   }
 
   Object.assign(element.style, styleUpdates);
+}
+
+function updateTextContent() {
+  if (!selectedElement.value) return;
+  const el = selectedElement.value;
+
+  // 只更新没有子元素的元素的文本内容
+  if (el.children.length === 0) {
+    el.textContent = textContent.value;
+    // 同步更新页面 HTML 到 store
+    const frame = document.querySelector('.canvas-frame') as HTMLIFrameElement;
+    if (frame?.contentDocument) {
+      const container = frame.contentDocument.querySelector('.page-container');
+      if (container) {
+        const projectStore = useProjectStore();
+        projectStore.updatePageHtml(container.innerHTML);
+      }
+    }
+  }
 }
 
 function updateAttribute(name: string) {

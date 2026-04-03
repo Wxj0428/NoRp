@@ -179,12 +179,28 @@
 
     <!-- Input -->
     <div class="p-4 border-t border-gray-700">
+      <!-- 选中元素提示 -->
+      <div
+        v-if="editorStore.selectedElementHtml"
+        class="mb-2 px-3 py-2 bg-gray-800 rounded-lg border border-gray-600 text-xs text-gray-300 flex items-center justify-between gap-2"
+      >
+        <div class="flex items-center gap-2 min-w-0">
+          <span class="text-blue-400 shrink-0">&#x1F6CE;</span>
+          <span class="truncate">选中: &lt;{{ editorStore.selectedElementTag }}&gt;</span>
+        </div>
+        <button
+          @click="insertSelectedElement"
+          class="shrink-0 px-2 py-0.5 bg-blue-600 hover:bg-blue-500 text-white rounded text-xs transition"
+        >
+          发送到对话
+        </button>
+      </div>
       <div class="flex gap-2">
         <textarea
           v-model="inputMessage"
           @keydown.enter.exact.prevent="sendMessage"
           rows="3"
-          placeholder="描述你想要的页面... (选择 Skill 可增强 AI 能力)"
+          :placeholder="inputPlaceholder"
           class="flex-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm resize-none focus:outline-none focus:border-blue-500"
         ></textarea>
         <button
@@ -253,6 +269,25 @@ const expandedToolDetails = ref(new Set<string>());
 // Skill state
 const activeSkillId = computed(() => aiStore.activeSkillId);
 const activeSkill = computed(() => aiStore.getActiveSkill);
+
+// Input placeholder
+const inputPlaceholder = computed(() => {
+  if (editorStore.selectedElementHtml) {
+    return '描述你想要的修改... (已检测到选中元素，可点击"发送到对话")';
+  }
+  return '描述你想要的页面... (选择 Skill 可增强 AI 能力)';
+});
+
+function insertSelectedElement() {
+  const tag = editorStore.selectedElementTag || 'element';
+  const html = editorStore.selectedElementHtml || '';
+  if (!html) return;
+
+  // 截断过长的 HTML
+  const truncated = html.length > 2000 ? html.substring(0, 2000) + '\n<!-- ...已截断 -->' : html;
+
+  inputMessage.value = `请优化这个 ${tag} 元素的样式和设计：\n\`\`\`html\n${truncated}\n\`\`\``;
+}
 
 const examplePrompts = [
   '生成一个用户登录页面，包含邮箱和密码输入框',
@@ -394,6 +429,22 @@ async function sendMessage() {
           if (!msg.toolCallDetails) msg.toolCallDetails = [];
           msg.toolCallDetails.push(detail);
           aiStore.addToolCall(toolCall);
+
+          // 捕获画布修改工具的 HTML，供"重新应用"按钮使用
+          const canvasTools = ['replace_page', 'append_content', 'modify_element'];
+          if (canvasTools.includes(toolCall.name)) {
+            const html = toolCall.arguments?.html || toolCall.arguments?.newHtml || '';
+            if (html) {
+              const action = toolCall.name === 'replace_page' ? 'replace-page'
+                : toolCall.name === 'modify_element' ? 'modify-selected' : 'append';
+              lastGeneratedCode.value = action === 'replace-page'
+                ? `<!-- ACTION:REPLACE_PAGE -->${html}`
+                : action === 'modify-selected'
+                ? `<!-- ACTION:MODIFY_SELECTED -->${html}`
+                : html;
+            }
+          }
+
           scrollToBottom();
         },
         onToolCallResult: (result: any) => {
@@ -408,14 +459,19 @@ async function sendMessage() {
         onIterationStart: (iteration: number, maxIterations: number) => {
           aiStore.setAgentIterations(iteration);
         },
-        onComplete: (finalText: string) => {
-          // 尝试从文本中提取 HTML（工具调用模式下的后备方案）
+        onComplete: (finalText: string, wasTruncated: boolean) => {
+          // 截断警告
+          if (wasTruncated) {
+            aiStore.messages[assistantMessageIndex].content =
+              (aiStore.messages[assistantMessageIndex].content || '') +
+              '\n\n⚠️ **AI 响应被截断**（达到最大 token 限制）。生成的内容可能不完整，建议在设置中增大"最大令牌数"，或简化您的需求后重试。';
+          }
+          // 只保存 lastGeneratedCode 供"重新应用"按钮使用
+          // 不再从 onComplete 重复设置 pendingAction（工具调用已直接应用）
           if (finalText) {
             const extractedHtml = extractHtmlFromResponse(finalText);
             if (extractedHtml) {
               lastGeneratedCode.value = extractedHtml;
-              const { action, html } = parseAIAction(extractedHtml);
-              editorStore.setPendingAction(action, html);
             }
           }
           isLoading.value = false;
@@ -459,14 +515,24 @@ async function sendMessage() {
 }
 
 function extractHtmlFromResponse(response: string): string | null {
-  // 1. Try ```html ... ``` code block
+  // 1. Try ```html ... ``` code block (with closing backticks)
   const codeMatch = response.match(/```html\n([\s\S]*?)\n```/);
   if (codeMatch) return codeMatch[1];
+
+  // 1b. Try ```html ... (truncated — no closing backticks)
+  const truncatedCodeMatch = response.match(/```html\n([\s\S]+)$/);
+  if (truncatedCodeMatch) return truncatedCodeMatch[1];
 
   // 2. Try ``` ... ``` code block (no language tag)
   const genericMatch = response.match(/```\n([\s\S]*?)\n```/);
   if (genericMatch && genericMatch[1].includes('<') && genericMatch[1].includes('>')) {
     return genericMatch[1];
+  }
+
+  // 2b. Truncated generic code block
+  const truncatedGeneric = response.match(/```\n([\s\S]+)$/);
+  if (truncatedGeneric && truncatedGeneric[1].includes('<') && truncatedGeneric[1].includes('>')) {
+    return truncatedGeneric[1];
   }
 
   // 3. Try full HTML document
