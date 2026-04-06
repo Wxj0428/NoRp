@@ -26,6 +26,9 @@ export const useEditorStore = defineStore('editor', () => {
   const snapToGrid = ref(true);
   const showRulers = ref(true);
 
+  // AI processing overlay state
+  const isCanvasBusy = ref(false);
+
   // Getters
   const canUndo = computed(() => historyIndex.value > 0);
   const canRedo = computed(() => historyIndex.value < history.value.length - 1);
@@ -168,6 +171,7 @@ export const useEditorStore = defineStore('editor', () => {
     clearPendingInsert,
     setPendingAction,
     clearPendingAction,
+    isCanvasBusy,
     getSelectedElementId
   }
 });

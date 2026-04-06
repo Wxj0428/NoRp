@@ -708,6 +708,7 @@ function updateStyle() {
   }
 
   Object.assign(element.style, styleUpdates);
+  persistCanvasToStore();
 }
 
 function updateTextContent() {
@@ -737,6 +738,27 @@ function updateAttribute(name: string) {
   } else {
     selectedElement.value.removeAttribute(name);
   }
+  persistCanvasToStore();
+}
+
+// Debounced persist: sync canvas DOM → projectStore + editorStore (for undo/redo)
+let stylePersistTimer: ReturnType<typeof setTimeout> | null = null;
+function persistCanvasToStore() {
+  if (stylePersistTimer) clearTimeout(stylePersistTimer);
+  stylePersistTimer = setTimeout(() => {
+    const frame = document.querySelector('.canvas-frame') as HTMLIFrameElement;
+    if (frame?.contentDocument) {
+      const container = frame.contentDocument.querySelector('.page-container');
+      if (container) {
+        const projectStore = useProjectStore();
+        projectStore.updatePageHtml(container.innerHTML);
+        const editorStore = useEditorStore();
+        if (projectStore.currentPageId) {
+          editorStore.pushSnapshot(projectStore.currentPageId, container.innerHTML);
+        }
+      }
+    }
+  }, 500);
 }
 
 function handleDelete() {

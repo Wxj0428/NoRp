@@ -71,7 +71,7 @@
     </div>
 
     <!-- Messages -->
-    <div ref="messagesContainer" class="flex-1 overflow-y-auto p-4 space-y-4">
+    <div ref="messagesContainer" @scroll="handleChatScroll" class="flex-1 overflow-y-auto p-4 space-y-4 relative">
       <div
         v-for="(message, index) in messages"
         :key="index"
@@ -82,10 +82,12 @@
       >
         <div
           :class="[
-            'max-w-[80%] rounded-lg p-3',
+            'max-w-[85%] rounded-lg p-3',
             message.role === 'user'
               ? 'bg-blue-600 text-white'
-              : 'bg-gray-700 text-gray-200'
+              : isErrorMessage(message)
+                ? 'bg-red-900/50 border border-red-700/50 text-gray-200'
+                : 'bg-gray-700 text-gray-200'
           ]"
         >
           <!-- Tool Call Details (collapsible) -->
@@ -127,8 +129,8 @@
               </div>
             </div>
           </div>
-          <!-- Check if message contains code block -->
-          <div v-if="message.content.includes('```')" class="text-sm space-y-2">
+          <!-- Message content with markdown + code block rendering -->
+          <div v-if="message.content.includes('```')" class="text-sm space-y-2 chat-markdown">
             <template v-for="(part, partIndex) in parseMessage(message.content)" :key="partIndex">
               <div v-if="part.type === 'code'" class="my-2">
                 <div class="bg-gray-900 rounded px-2 py-1 text-xs text-green-400 mb-1 flex items-center gap-2">
@@ -146,14 +148,27 @@
                   <pre class="whitespace-pre-wrap">{{ part.content }}</pre>
                 </div>
               </div>
-              <div v-else class="whitespace-pre-wrap">{{ part.content }}</div>
+              <div v-else v-html="renderMarkdown(part.content)" class="leading-relaxed"></div>
             </template>
+            <!-- Streaming cursor -->
+            <span v-if="isLoading && hasReceivedFirstChunk && index === messages.length - 1 && message.role === 'assistant'" class="inline-block w-1.5 h-4 bg-gray-400 animate-pulse ml-0.5 align-middle"></span>
           </div>
-          <div v-else class="text-sm whitespace-pre-wrap">{{ message.content }}</div>
+          <div v-else class="text-sm chat-markdown">
+            <div v-html="renderMarkdown(message.content)" class="leading-relaxed"></div>
+            <!-- Streaming cursor -->
+            <span v-if="isLoading && hasReceivedFirstChunk && index === messages.length - 1 && message.role === 'assistant'" class="inline-block w-1.5 h-4 bg-gray-400 animate-pulse ml-0.5 align-middle"></span>
+          </div>
+          <!-- Retry button for error messages -->
+          <div v-if="isErrorMessage(message) && lastFailedMessage" class="mt-2">
+            <button @click="retryLastMessage" class="px-3 py-1 text-xs bg-red-600 hover:bg-red-500 text-white rounded transition">
+              重试
+            </button>
+          </div>
         </div>
       </div>
 
-      <div v-if="isLoading" class="flex justify-start">
+      <!-- Loading indicator: only show bouncing dots before first chunk arrives -->
+      <div v-if="isLoading && !hasReceivedFirstChunk" class="flex justify-start">
         <div class="bg-gray-700 rounded-lg p-3">
           <div class="flex items-center gap-2">
             <div class="flex space-x-2">
@@ -164,7 +179,7 @@
             <span v-if="aiStore.isAgentRunning" class="text-xs text-gray-400">
               Agent 迭代 {{ aiStore.agentIterations }}/{{ aiStore.config.maxAgentIterations || 10 }}...
             </span>
-            <span v-else class="text-xs text-gray-400">AI 正在生成页面...</span>
+            <span v-else class="text-xs text-gray-400">AI 正在思考...</span>
           </div>
           <button
             v-if="aiStore.isAgentRunning"
@@ -175,6 +190,15 @@
           </button>
         </div>
       </div>
+
+      <!-- Scroll to bottom button -->
+      <button
+        v-if="!isUserAtBottom && isLoading"
+        @click="scrollToBottom(true)"
+        class="absolute bottom-4 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs rounded-full shadow-lg transition z-10"
+      >
+        ↓ 新消息
+      </button>
     </div>
 
     <!-- Input -->
@@ -197,11 +221,14 @@
       </div>
       <div class="flex gap-2">
         <textarea
+          ref="textareaRef"
           v-model="inputMessage"
           @keydown.enter.exact.prevent="sendMessage"
-          rows="3"
+          @input="autoResizeTextarea"
+          rows="1"
           :placeholder="inputPlaceholder"
-          class="flex-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm resize-none focus:outline-none focus:border-blue-500"
+          class="flex-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm resize-none focus:outline-none focus:border-blue-500 overflow-hidden"
+          style="min-height: 38px; max-height: 150px;"
         ></textarea>
         <button
           @click="sendMessage"
@@ -220,9 +247,9 @@
       </div>
       <div class="mt-2 flex gap-2">
         <button
-          v-if="lastGeneratedCode"
           @click="insertCode"
-          class="px-3 py-1 text-xs bg-green-600 hover:bg-green-700 text-white rounded transition"
+          :disabled="!lastGeneratedCode"
+          class="px-3 py-1 text-xs bg-green-600 hover:bg-green-700 disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed text-white rounded transition"
         >
           重新应用到画布
         </button>
@@ -238,15 +265,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, onMounted } from 'vue';
+import { ref, computed, nextTick, onMounted, watch } from 'vue';
 import { useAIStore } from '@/stores/ai';
 import { useEditorStore } from '@/stores/editor';
 import { useProjectStore } from '@/stores/project';
+import { useToastStore } from '@/stores/toast';
 import { createAIService } from '@/services/ai';
 import { Agent } from '@/services/ai/agent';
 import { ToolExecutor } from '@/services/ai/tools/executor';
 import { ALL_TOOLS } from '@/services/ai/tools';
 import { PromptBuilder } from '@/services/ai/prompt-builder';
+import { renderMarkdown } from '@/composables/useMarkdown';
 import type { ChatMessage, Skill, AIActionType, ToolCallDetail } from '@/types';
 
 defineEmits<{
@@ -261,10 +290,16 @@ const projectStore = useProjectStore();
 const messages = computed(() => aiStore.messages);
 const inputMessage = ref('');
 const messagesContainer = ref<HTMLElement>();
+const textareaRef = ref<HTMLTextAreaElement>();
 const isLoading = ref(false);
 const lastGeneratedCode = ref('');
 const streamingResponse = ref('');
 const expandedToolDetails = ref(new Set<string>());
+const hasReceivedFirstChunk = ref(false);
+const lastFailedMessage = ref<string | null>(null);
+
+// Smart scroll tracking
+const isUserAtBottom = ref(true);
 
 // Skill state
 const activeSkillId = computed(() => aiStore.activeSkillId);
@@ -342,6 +377,14 @@ async function sendMessage() {
   const message = inputMessage.value.trim();
   if (!message || isLoading.value) return;
 
+  // Early API key check (Phase 6C: don't pollute chat history)
+  if ((aiStore.config.provider !== 'local' && !aiStore.config.apiKey) ||
+      (aiStore.config.provider === 'local' && !aiStore.config.baseURL)) {
+    const toast = useToastStore();
+    toast.warning('请先配置 AI 设置');
+    return;
+  }
+
   // 添加用户消息
   aiStore.addMessage({
     role: 'user',
@@ -349,10 +392,14 @@ async function sendMessage() {
   });
 
   inputMessage.value = '';
-  await scrollToBottom();
+  resetTextareaHeight();
+  await scrollToBottom(true);
 
   isLoading.value = true;
+  hasReceivedFirstChunk.value = false;
+  lastFailedMessage.value = null;
   streamingResponse.value = '';
+  editorStore.isCanvasBusy = true;
 
   // 添加助手回复占位符
   const assistantMessageIndex = aiStore.messages.length;
@@ -362,18 +409,7 @@ async function sendMessage() {
   });
 
   try {
-    // 发送后清除 skill 选中状态
-    aiStore.setActiveSkill(null);
-
-    // Check if AI is configured
-    if ((aiStore.config.provider !== 'local' && !aiStore.config.apiKey) ||
-        (aiStore.config.provider === 'local' && !aiStore.config.baseURL)) {
-      aiStore.messages[assistantMessageIndex].content =
-        '请先配置 AI 设置。点击顶部的"AI 设置"按钮进行配置。';
-      await scrollToBottom();
-      isLoading.value = false;
-      return;
-    }
+    // Phase 7A: Keep skill selection (don't clear after each send)
 
     // 使用 PromptBuilder 构建消息
     const useTools = aiStore.config.enableToolCalling !== false;
@@ -411,6 +447,7 @@ async function sendMessage() {
 
       await agent.run(enhancedMessages, ALL_TOOLS, {
         onTextChunk: (text: string) => {
+          hasReceivedFirstChunk.value = true;
           const current = aiStore.messages[assistantMessageIndex].content || '';
           aiStore.messages[assistantMessageIndex].content = current + text;
           streamingResponse.value = aiStore.messages[assistantMessageIndex].content;
@@ -475,14 +512,19 @@ async function sendMessage() {
             }
           }
           isLoading.value = false;
+          editorStore.isCanvasBusy = false;
+          hasReceivedFirstChunk.value = false;
           aiStore.setAgentRunning(false);
           aiStore.clearToolCalls();
         },
         onError: (error: Error) => {
+          lastFailedMessage.value = message;
           aiStore.messages[assistantMessageIndex].content =
-            `错误: ${error.message || '未知错误'}`;
+            `❌ 错误: ${error.message || '未知错误'}`;
           aiStore.setError(error.message);
           isLoading.value = false;
+          editorStore.isCanvasBusy = false;
+          hasReceivedFirstChunk.value = false;
           aiStore.setAgentRunning(false);
           scrollToBottom();
         },
@@ -505,6 +547,7 @@ async function sendMessage() {
         editorStore.setPendingAction(action, html);
       }
       isLoading.value = false;
+      editorStore.isCanvasBusy = false;
     }
   } catch (error) {
     aiStore.messages[assistantMessageIndex].content =
@@ -614,6 +657,7 @@ function insertCode() {
 function clearChat() {
   lastGeneratedCode.value = '';
   isLoading.value = false;
+  editorStore.isCanvasBusy = false;
   expandedToolDetails.value.clear();
   aiStore.cancelAgent();
   aiStore.clearMessages();
@@ -622,6 +666,7 @@ function clearChat() {
 function cancelAgent() {
   aiStore.cancelAgent();
   isLoading.value = false;
+  editorStore.isCanvasBusy = false;
 }
 
 function toggleToolDetail(key: string) {
@@ -647,10 +692,50 @@ function formatToolArgs(args: Record<string, any>): string {
   return JSON.stringify(formatted, null, 2);
 }
 
-async function scrollToBottom() {
+// Smart scroll: only auto-scroll when user is at bottom or force=true
+async function scrollToBottom(force = false) {
   await nextTick();
-  if (messagesContainer.value) {
+  if (messagesContainer.value && (force || isUserAtBottom.value)) {
     messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
+  }
+}
+
+function handleChatScroll() {
+  const el = messagesContainer.value;
+  if (!el) return;
+  const threshold = 100;
+  isUserAtBottom.value = el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
+}
+
+function autoResizeTextarea() {
+  const el = textareaRef.value;
+  if (!el) return;
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 150) + 'px';
+}
+
+function resetTextareaHeight() {
+  const el = textareaRef.value;
+  if (el) {
+    el.style.height = 'auto';
+  }
+}
+
+function isErrorMessage(message: ChatMessage): boolean {
+  return message.role === 'assistant' &&
+    (message.content.startsWith('❌') || message.content.startsWith('错误:'));
+}
+
+function retryLastMessage() {
+  if (lastFailedMessage.value) {
+    inputMessage.value = lastFailedMessage.value;
+    lastFailedMessage.value = null;
+    // Remove the last error message
+    const msgs = aiStore.messages;
+    if (msgs.length > 0 && isErrorMessage(msgs[msgs.length - 1])) {
+      msgs.splice(msgs.length - 1, 1);
+    }
+    sendMessage();
   }
 }
 
@@ -679,12 +764,25 @@ function parseMessage(content: string) {
     lastIndex = codeBlockRegex.lastIndex;
   }
 
-  // Add remaining text
+  // Handle remaining content after last complete code block
   if (lastIndex < content.length) {
-    parts.push({
-      type: 'text',
-      content: content.slice(lastIndex)
-    });
+    const remaining = content.slice(lastIndex);
+    // Check for incomplete code block (streaming state - no closing backticks)
+    const incompleteMatch = remaining.match(/```(\w*)\n([\s\S]*)$/);
+    if (incompleteMatch) {
+      // There might be text before the incomplete code block
+      const textBefore = remaining.slice(0, remaining.indexOf('```'));
+      if (textBefore.trim()) {
+        parts.push({ type: 'text', content: textBefore });
+      }
+      parts.push({
+        type: 'code',
+        content: incompleteMatch[2],
+        language: incompleteMatch[1] || 'code'
+      });
+    } else if (remaining.trim()) {
+      parts.push({ type: 'text', content: remaining });
+    }
   }
 
   return parts.length > 0 ? parts : [{ type: 'text', content }];
@@ -696,16 +794,8 @@ function getLanguage(part: { type: string; content: string; language?: string })
 
 function copyCode(code: string) {
   navigator.clipboard.writeText(code).then(() => {
-    // Show a brief notification
-    const idx = aiStore.messages.length;
-    aiStore.addMessage({
-      role: 'assistant',
-      content: '✅ 代码已复制到剪贴板'
-    });
-    setTimeout(() => {
-      aiStore.messages.splice(idx, 1);
-      scrollToBottom();
-    }, 2000);
+    const toast = useToastStore();
+    toast.success('代码已复制到剪贴板');
   });
 }
 </script>
