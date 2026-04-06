@@ -36,6 +36,23 @@ export const useEditorStore = defineStore('editor', () => {
   // Actions
   function selectElement(element: HTMLElement | null) {
     selectedElement.value = element;
+    selectedElementId.value = element
+      ? (element.getAttribute('data-element-id') || element.id || null)
+      : null;
+  }
+
+  function rebindSelectedElement(doc: Document) {
+    if (!selectedElementId.value) {
+      selectedElement.value = null;
+      return;
+    }
+    const el = doc.querySelector(`[data-element-id="${selectedElementId.value}"]`)
+      || doc.getElementById(selectedElementId.value);
+    if (el) {
+      selectedElement.value = el as HTMLElement;
+    } else {
+      selectedElement.value = null;
+    }
   }
 
   function updateSelectedElementInfo(element: HTMLElement | null) {
@@ -172,6 +189,7 @@ export const useEditorStore = defineStore('editor', () => {
     setPendingAction,
     clearPendingAction,
     isCanvasBusy,
-    getSelectedElementId
+    getSelectedElementId,
+    rebindSelectedElement
   }
 });

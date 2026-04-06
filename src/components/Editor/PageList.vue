@@ -280,6 +280,7 @@ import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue';
 import { useProjectStore } from '@/stores/project';
 import { useAIStore } from '@/stores/ai';
 import { useEditorStore } from '@/stores/editor';
+import { useToastStore } from '@/stores/toast';
 import { createAIService } from '@/services/ai';
 import { Agent } from '@/services/ai/agent';
 import { ToolExecutor } from '@/services/ai/tools/executor';
@@ -290,6 +291,7 @@ import type { Page, ToolCallDetail, ChatMessage } from '@/types';
 const projectStore = useProjectStore();
 const aiStore = useAIStore();
 const editorStore = useEditorStore();
+const toast = useToastStore();
 
 const editingPageId = ref<string | null>(null);
 const editingName = ref('');
@@ -370,7 +372,7 @@ function duplicatePage(page: any) {
 // Delete page
 function deletePage(page: any) {
   if (pages.value.length <= 1) {
-    alert('至少需要保留一个页面');
+    toast.warning('至少需要保留一个页面');
     return;
   }
 
@@ -418,13 +420,13 @@ function saveDescription() {
 async function aiOptimizeDescription() {
   const content = descriptionModal.value.content.trim();
   if (!content) {
-    alert('请先输入设计思路内容');
+    toast.warning('请先输入设计思路内容');
     return;
   }
 
   if ((aiStore.config.provider !== 'local' && !aiStore.config.apiKey) ||
       (aiStore.config.provider === 'local' && !aiStore.config.baseURL)) {
-    alert('请先在 AI 设置中配置 API 密钥');
+    toast.warning('请先在 AI 设置中配置 API 密钥');
     return;
   }
 
@@ -482,7 +484,7 @@ ${useTools ? '你可以使用工具读取当前页面的 HTML 来更好地理解
       descriptionModal.value.content = optimizeBuffer.value;
     }
   } catch (error) {
-    alert('AI 优化失败: ' + (error instanceof Error ? error.message : '未知错误'));
+    toast.error('AI 优化失败: ' + (error instanceof Error ? error.message : '未知错误'));
   } finally {
     isGeneratingDesc.value = false;
     optimizeBuffer.value = '';
@@ -495,13 +497,13 @@ async function aiGenerateToCanvas() {
   const originalContent = descriptionModal.value.content.trim();
   const page = descriptionModal.value.page;
   if (!originalContent) {
-    alert('请先输入设计思路内容');
+    toast.warning('请先输入设计思路内容');
     return;
   }
 
   if ((aiStore.config.provider !== 'local' && !aiStore.config.apiKey) ||
       (aiStore.config.provider === 'local' && !aiStore.config.baseURL)) {
-    alert('请先在 AI 设置中配置 API 密钥');
+    toast.warning('请先在 AI 设置中配置 API 密钥');
     return;
   }
 
@@ -524,9 +526,8 @@ async function aiGenerateToCanvas() {
     });
 
     const messages: ChatMessage[] = promptBuilder.buildMessages(
-      [],
-      systemPrompt,
-      `请根据以下设计思路生成完整的页面：\n\n${originalContent}`,
+      [{ role: 'user', content: `请根据以下设计思路生成完整的页面：\n\n${originalContent}` }],
+      systemPrompt
     );
 
     if (useTools) {
@@ -570,7 +571,7 @@ async function aiGenerateToCanvas() {
           await nextTick();
           editorStore.setPendingAction('replace-page', extractedHtml, pageId);
         } else {
-          alert('AI 未能生成有效的 HTML 内容');
+          toast.error('AI 未能生成有效的 HTML 内容');
         }
       }
     } else {
@@ -591,12 +592,12 @@ async function aiGenerateToCanvas() {
           await nextTick();
           editorStore.setPendingAction('replace-page', html, pageId);
         } else {
-          alert('AI 未能生成有效的 HTML 内容');
+          toast.error('AI 未能生成有效的 HTML 内容');
         }
       }
     }
   } catch (error) {
-    alert('AI 生成页面失败: ' + (error instanceof Error ? error.message : '未知错误'));
+    toast.error('AI 生成页面失败: ' + (error instanceof Error ? error.message : '未知错误'));
   } finally {
     isGeneratingToCanvas.value = false;
     generateBuffer.value = '';
@@ -612,7 +613,7 @@ async function aiGenerateFromDescription(page: Page | null) {
 
   if ((aiStore.config.provider !== 'local' && !aiStore.config.apiKey) ||
       (aiStore.config.provider === 'local' && !aiStore.config.baseURL)) {
-    alert('请先在 AI 设置中配置 API 密钥');
+    toast.warning('请先在 AI 设置中配置 API 密钥');
     return;
   }
 
@@ -632,9 +633,8 @@ async function aiGenerateFromDescription(page: Page | null) {
     });
 
     const messages: ChatMessage[] = promptBuilder.buildMessages(
-      aiStore.messages,
-      systemPrompt,
-      `请根据以下设计思路生成完整的页面：\n\n${page.description}`,
+      [...aiStore.messages, { role: 'user', content: `请根据以下设计思路生成完整的页面：\n\n${page.description}` }],
+      systemPrompt
     );
 
     if (useTools) {
@@ -673,11 +673,11 @@ async function aiGenerateFromDescription(page: Page | null) {
       if (extractedHtml) {
         editorStore.setPendingAction('replace-page', extractedHtml, page.id);
       } else {
-        alert('AI 未能生成有效的 HTML 内容');
+        toast.error('AI 未能生成有效的 HTML 内容');
       }
     }
   } catch (error) {
-    alert('AI 生成页面失败: ' + (error instanceof Error ? error.message : '未知错误'));
+    toast.error('AI 生成页面失败: ' + (error instanceof Error ? error.message : '未知错误'));
   } finally {
     aiStore.setAgentRunning(false);
   }

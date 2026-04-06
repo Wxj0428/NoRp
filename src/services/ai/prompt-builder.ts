@@ -101,13 +101,12 @@ export class PromptBuilder {
   buildMessages(
     sessionHistory: ChatMessage[],
     systemPrompt: string,
-    userMessage: string,
+    userMessage?: string,
     maxHistoryMessages: number = 10
   ): ChatMessage[] {
     return [
       { role: 'system', content: systemPrompt },
       ...sessionHistory.slice(-maxHistoryMessages),
-      { role: 'user', content: userMessage },
     ];
   }
 

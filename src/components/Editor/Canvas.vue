@@ -402,6 +402,7 @@ watch(
     switch (action.type) {
       case 'replace-page':
         container.innerHTML = extractBodyContent(action.html);
+        editorStore.rebindSelectedElement(doc);
         break;
 
       case 'modify-selected': {
@@ -449,6 +450,9 @@ function updateCanvasContent() {
   if (projectStore.currentPage) {
     // 直接更新 innerHTML
     container.innerHTML = projectStore.currentPage.html;
+
+    // Re-bind selected element after DOM rebuild
+    editorStore.rebindSelectedElement(canvasFrame.value.contentDocument);
 
     // Re-attach drop event listeners after DOM update
     setTimeout(() => {
@@ -557,6 +561,12 @@ function handleElementMouseDown(e: MouseEvent) {
       isDragging.value = true;
       dragElement.value = target;
 
+      // Save pre-move snapshot for undo
+      const container = canvasFrame.value?.contentDocument?.querySelector('.page-container');
+      if (container && projectStore.currentPageId) {
+        editorStore.pushSnapshot(projectStore.currentPageId, container.innerHTML);
+      }
+
       // 计算鼠标相对于元素的偏移
       const rect = target.getBoundingClientRect();
       dragOffset.value = {
@@ -571,8 +581,6 @@ function handleElementMouseDown(e: MouseEvent) {
         target.style.left = rect.left + 'px';
         target.style.top = rect.top + 'px';
       }
-
-      console.log('Started dragging element:', target.tagName);
     }
   }
 }
@@ -599,15 +607,12 @@ function handleElementMouseMove(e: MouseEvent) {
 
 function handleElementMouseUp(_e: MouseEvent) {
   if (isDragging.value && dragElement.value) {
-    // Save position change — snapshot was not taken at mousedown, so take it now
-    // from the pre-move state (currentPage.html has the old state)
-    // Actually we need to save the old state before the move changed things.
-    // The container.innerHTML already has the new position. So we need to track the pre-move html.
-    // For simplicity: the snapshot was set before the move started via page html,
-    // and now we just save the new state.
     const container = canvasFrame.value?.contentDocument?.querySelector('.page-container');
     if (container) {
       projectStore.updatePageHtml(container.innerHTML);
+      if (projectStore.currentPageId) {
+        editorStore.pushSnapshot(projectStore.currentPageId, container.innerHTML);
+      }
     }
   }
 
@@ -720,6 +725,7 @@ function handleUndo() {
       container.innerHTML = action.pageHtml;
       projectStore.updatePageHtml(container.innerHTML);
     }
+    editorStore.rebindSelectedElement(canvasFrame.value.contentDocument);
   }
 }
 
@@ -733,6 +739,7 @@ function handleRedo() {
       container.innerHTML = action.pageHtml;
       projectStore.updatePageHtml(container.innerHTML);
     }
+    editorStore.rebindSelectedElement(canvasFrame.value.contentDocument);
   }
 }
 
@@ -844,16 +851,16 @@ function handleKeyDown(e: KeyboardEvent) {
   if (e.key === 'z' && (e.ctrlKey || e.metaKey)) {
     e.preventDefault();
     if (e.shiftKey) {
-      editorStore.redo();
+      handleRedo();
     } else {
-      editorStore.undo();
+      handleUndo();
     }
   }
 
   // Ctrl+Y 重做
   if (e.key === 'y' && (e.ctrlKey || e.metaKey)) {
     e.preventDefault();
-    editorStore.redo();
+    handleRedo();
   }
 
   // Escape 取消选中

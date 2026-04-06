@@ -181,13 +181,6 @@
             </span>
             <span v-else class="text-xs text-gray-400">AI 正在思考...</span>
           </div>
-          <button
-            v-if="aiStore.isAgentRunning"
-            @click="cancelAgent"
-            class="mt-2 text-xs text-red-400 hover:text-red-300 underline"
-          >
-            取消
-          </button>
         </div>
       </div>
 
@@ -223,7 +216,7 @@
         <textarea
           ref="textareaRef"
           v-model="inputMessage"
-          @keydown.enter.exact.prevent="sendMessage"
+          @keydown.enter.exact="handleEnterKey"
           @input="autoResizeTextarea"
           rows="1"
           :placeholder="inputPlaceholder"
@@ -231,17 +224,24 @@
           style="min-height: 38px; max-height: 150px;"
         ></textarea>
         <button
+          v-if="isLoading"
+          @click="cancelAgent"
+          class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition flex items-center justify-center"
+          title="停止生成"
+        >
+          <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+            <rect x="6" y="6" width="12" height="12" rx="2" />
+          </svg>
+        </button>
+        <button
+          v-else
           @click="sendMessage"
-          :disabled="!inputMessage.trim() || isLoading"
+          :disabled="!inputMessage.trim()"
           class="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white rounded-lg transition flex items-center justify-center"
           title="生成页面 (Enter)"
         >
-          <svg v-if="!isLoading" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-          </svg>
-          <svg v-else class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
         </button>
       </div>
@@ -300,6 +300,9 @@ const lastFailedMessage = ref<string | null>(null);
 
 // Smart scroll tracking
 const isUserAtBottom = ref(true);
+
+// Agent timeout protection
+let agentTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
 // Skill state
 const activeSkillId = computed(() => aiStore.activeSkillId);
@@ -425,8 +428,7 @@ async function sendMessage() {
 
     const enhancedMessages = promptBuilder.buildMessages(
       aiStore.messages,
-      systemPrompt,
-      message
+      systemPrompt
     );
 
     // Create AI service
@@ -441,6 +443,13 @@ async function sendMessage() {
         maxIterations: aiStore.config.maxAgentIterations || 10,
         signal: controller.signal,
       });
+
+      // 120s 超时保护
+      agentTimeoutId = setTimeout(() => {
+        cancelAgent();
+        const toast = useToastStore();
+        toast.warning('AI 响应超时，已自动取消');
+      }, 120000);
 
       // Track tool call details for collapsible display
       const toolCallDetailsMap = new Map<string, ToolCallDetail>();
@@ -516,6 +525,7 @@ async function sendMessage() {
           hasReceivedFirstChunk.value = false;
           aiStore.setAgentRunning(false);
           aiStore.clearToolCalls();
+          if (agentTimeoutId) { clearTimeout(agentTimeoutId); agentTimeoutId = null; }
         },
         onError: (error: Error) => {
           lastFailedMessage.value = message;
@@ -526,6 +536,7 @@ async function sendMessage() {
           editorStore.isCanvasBusy = false;
           hasReceivedFirstChunk.value = false;
           aiStore.setAgentRunning(false);
+          if (agentTimeoutId) { clearTimeout(agentTimeoutId); agentTimeoutId = null; }
           scrollToBottom();
         },
       });
@@ -554,6 +565,10 @@ async function sendMessage() {
       `错误: ${error instanceof Error ? error.message : '未知错误'}`;
     aiStore.setError(error instanceof Error ? error.message : '未知错误');
     isLoading.value = false;
+    editorStore.isCanvasBusy = false;
+    hasReceivedFirstChunk.value = false;
+    aiStore.setAgentRunning(false);
+    if (agentTimeoutId) { clearTimeout(agentTimeoutId); agentTimeoutId = null; }
   }
 }
 
@@ -664,9 +679,11 @@ function clearChat() {
 }
 
 function cancelAgent() {
+  if (agentTimeoutId) { clearTimeout(agentTimeoutId); agentTimeoutId = null; }
   aiStore.cancelAgent();
   isLoading.value = false;
   editorStore.isCanvasBusy = false;
+  hasReceivedFirstChunk.value = false;
 }
 
 function toggleToolDetail(key: string) {
@@ -712,6 +729,12 @@ function autoResizeTextarea() {
   if (!el) return;
   el.style.height = 'auto';
   el.style.height = Math.min(el.scrollHeight, 150) + 'px';
+}
+
+function handleEnterKey(e: KeyboardEvent) {
+  if (e.shiftKey) return; // Allow Shift+Enter for newlines
+  e.preventDefault();
+  sendMessage();
 }
 
 function resetTextareaHeight() {

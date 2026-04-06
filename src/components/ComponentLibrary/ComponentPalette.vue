@@ -37,11 +37,13 @@ import type { Component } from '@/types';
 const collapsedCategories = ref(new Set<string>());
 
 function toggleCategory(category: string) {
-  if (collapsedCategories.value.has(category)) {
-    collapsedCategories.value.delete(category);
+  const newSet = new Set(collapsedCategories.value);
+  if (newSet.has(category)) {
+    newSet.delete(category);
   } else {
-    collapsedCategories.value.add(category);
+    newSet.add(category);
   }
+  collapsedCategories.value = newSet;
 }
 
 const components = ref<Component[]>([

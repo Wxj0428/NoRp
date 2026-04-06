@@ -362,6 +362,24 @@
         </div>
       </div>
 
+      <!-- Display -->
+      <div class="space-y-2">
+        <label class="text-xs text-gray-400 uppercase tracking-wide">显示</label>
+        <select
+          v-model="styles.display"
+          @change="updateStyle"
+          class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white"
+        >
+          <option value="block">块级 (block)</option>
+          <option value="inline">内联 (inline)</option>
+          <option value="inline-block">内联块 (inline-block)</option>
+          <option value="flex">弹性 (flex)</option>
+          <option value="inline-flex">内联弹性 (inline-flex)</option>
+          <option value="grid">网格 (grid)</option>
+          <option value="none">隐藏 (none)</option>
+        </select>
+      </div>
+
       <!-- Flex/Grid Layout -->
       <div v-if="styles.display === 'flex' || styles.display === 'inline-flex' || styles.display === 'grid'" class="space-y-2">
         <label class="text-xs text-gray-400 uppercase tracking-wide">
@@ -466,24 +484,6 @@
             placeholder="0px"
           />
         </div>
-      </div>
-
-      <!-- Display -->
-      <div class="space-y-2">
-        <label class="text-xs text-gray-400 uppercase tracking-wide">显示</label>
-        <select
-          v-model="styles.display"
-          @change="updateStyle"
-          class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-sm text-white"
-        >
-          <option value="block">块级 (block)</option>
-          <option value="inline">内联 (inline)</option>
-          <option value="inline-block">内联块 (inline-block)</option>
-          <option value="flex">弹性 (flex)</option>
-          <option value="inline-flex">内联弹性 (inline-flex)</option>
-          <option value="grid">网格 (grid)</option>
-          <option value="none">隐藏 (none)</option>
-        </select>
       </div>
 
       <!-- Attributes -->
@@ -725,6 +725,10 @@ function updateTextContent() {
       if (container) {
         const projectStore = useProjectStore();
         projectStore.updatePageHtml(container.innerHTML);
+        const editorStore = useEditorStore();
+        if (projectStore.currentPageId) {
+          editorStore.pushSnapshot(projectStore.currentPageId, container.innerHTML);
+        }
       }
     }
   }

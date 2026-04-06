@@ -196,14 +196,24 @@ export function registerDefaultShortcuts(deps: {
     description: 'Cut'
   });
 
-  // Duplicate
+  // Duplicate (with offset to avoid overlap)
   shortcutManager.register({
     key: 'd',
     ctrl: true,
     handler: () => {
       const el = deps.editorStore.selectedElement;
       if (el) {
-        deps.editorStore.setPendingInsert(el.outerHTML);
+        let html = el.outerHTML;
+        // Add offset to avoid overlapping the original
+        const topMatch = html.match(/top\s*:\s*(\d+(?:\.\d+)?)(px|rem|em)?/);
+        const leftMatch = html.match(/left\s*:\s*(\d+(?:\.\d+)?)(px|rem|em)?/);
+        if (topMatch) {
+          html = html.replace(/top\s*:\s*\d+(?:\.\d+)?(px|rem|em)?/, `top: ${parseFloat(topMatch[1]) + 20}${topMatch[2] || 'px'}`);
+        }
+        if (leftMatch) {
+          html = html.replace(/left\s*:\s*\d+(?:\.\d+)?(px|rem|em)?/, `left: ${parseFloat(leftMatch[1]) + 20}${leftMatch[2] || 'px'}`);
+        }
+        deps.editorStore.setPendingInsert(html);
       }
     },
     description: 'Duplicate selected element'

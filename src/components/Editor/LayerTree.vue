@@ -128,6 +128,19 @@ function handleToggleVisibility(node: TreeNode) {
   visibilityMap.value.set(node.id, newVisible);
   visibilityMap.value = new Map(visibilityMap.value);
   node.element.style.display = newVisible ? '' : 'none';
+
+  // Persist and push undo snapshot
+  const frame = document.querySelector('.canvas-frame') as HTMLIFrameElement;
+  if (frame?.contentDocument) {
+    const container = frame.contentDocument.querySelector('.page-container');
+    if (container) {
+      projectStore.updatePageHtml(container.innerHTML);
+      if (projectStore.currentPageId) {
+        editorStore.pushSnapshot(projectStore.currentPageId, container.innerHTML);
+      }
+    }
+  }
+
   refreshTree();
 }
 
